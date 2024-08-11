@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { startOfDay, differenceInMinutes } from 'date-fns';
+import { toZonedTime  } from 'date-fns-tz';
 
 const Background = () => {
   const [backgroundPosition, setBackgroundPosition] = useState(0);
@@ -7,7 +8,12 @@ const Background = () => {
   const [percentageWidth, setPercentageWidth] = useState(0);
   const [gradientString, setGradientString] = useState(''); 
   const [opacity, setOpacity] = useState(0); // Initial opacity for fade-in effect
-  const now = new Date();
+  const timeZone = 'Europe/Stockholm'; // CEST timezone
+  const tim = new Date();
+
+  // Convert current time to CEST
+  const now = toZonedTime (tim, timeZone);
+  
 
   const fetchGradient = async () => {
     try {

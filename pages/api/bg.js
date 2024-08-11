@@ -50,7 +50,7 @@ export default async function handler(req, res) {
 
   if (!cachedData) {
     try {
-      const apiEndpoint = 'https://api.sunrise-sunset.org/json?lat=57.6529&lng=11.9106&formatted=0';
+      const apiEndpoint = 'https://api.sunrise-sunset.org/json?lat=57.6529&lng=11.9106&formatted=0&tzid=CEST';
       const response = await fetch(apiEndpoint);
 
       if (!response.ok) {

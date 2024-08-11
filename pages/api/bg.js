@@ -5,6 +5,7 @@ import { toZonedTime } from 'date-fns-tz';
 const cacheKey = 'sunriseSunsetCache';
 const gradientCacheKey = 'backgroundGradientCache';
 const cacheExpiry = 6 * 60 * 60 * 1000; // 6 hours in milliseconds
+const timeZone = 'Europe/Stockholm'; // CEST timezone
 
 // Function to generate background gradient
 const generateBackgroundGradient = (sunData) => {

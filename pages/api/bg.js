@@ -1,5 +1,6 @@
 // pages/api/sunrise-sunset.js
 import cache from 'memory-cache';
+import { toZonedTime } from 'date-fns-tz';
 
 const cacheKey = 'sunriseSunsetCache';
 const gradientCacheKey = 'backgroundGradientCache';
@@ -22,7 +23,8 @@ const generateBackgroundGradient = (sunData) => {
 
   const totalDayDurationMinutes = 24 * 60;
   const percentagesArray = times.map(value => {
-    const time = new Date(value);
+    const tid = new Date(value);
+    const time = toZonedTime(tid, timeZone);
     const minutesSinceMidnight = time.getHours() * 60 + time.getMinutes();
     return parseFloat(((minutesSinceMidnight / totalDayDurationMinutes) * 100).toFixed(1));
   });

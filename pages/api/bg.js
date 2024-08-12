@@ -5,7 +5,7 @@ import { toZonedTime } from 'date-fns-tz';
 const cacheKey = 'sunriseSunsetCache';
 const gradientCacheKey = 'backgroundGradientCache';
 const cacheExpiry = 6 * 60 * 60 * 1000; // 6 hours in milliseconds
-const timeZone = 'Europe/Stockholm'; // CEST timezone
+  const timeZone = 'Europe/Stockholm'; // CEST timezone
 
 // Function to generate background gradient
 const generateBackgroundGradient = (sunData) => {
@@ -30,14 +30,21 @@ const generateBackgroundGradient = (sunData) => {
     return parseFloat(((minutesSinceMidnight / totalDayDurationMinutes) * 100).toFixed(1));
   });
 
-  percentagesArray[0] = parseFloat((percentagesArray[0] - 3).toFixed(1));
+
+
+  percentagesArray[0] = parseFloat((percentagesArray[0] - 6).toFixed(1));
   percentagesArray[4] += 3;
-  percentagesArray.push(percentagesArray[2] + 5);
+  percentagesArray.push(percentagesArray[2] - 20);
+  percentagesArray[2] += 8;
   percentagesArray.sort((a, b) => a - b);
 
-  const colors = ['#18181B', '#FDBA74', '#38BDF8', '#38BDF8', '#F87171', '#18181B'];
+  const colors = ['#18181B', '#e48239', '#38BDF8', '#38BDF8', '#ce4993', '#18181B'];
   const gradientStops = colors.map((color, index) => {
     const percentage = percentagesArray[index];
+
+
+    console.log(percentage);
+
     return `${color} ${percentage}%`;
   });
 

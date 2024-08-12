@@ -9,10 +9,7 @@ const Background = () => {
   const [gradientString, setGradientString] = useState(''); 
   const [opacity, setOpacity] = useState(0); // Initial opacity for fade-in effect
   const timeZone = 'Europe/Stockholm'; // CEST timezone
-  const tim = new Date();
 
-  // Convert current time to CEST
-  const now = toZonedTime (tim, timeZone);
   
 
   const fetchGradient = async () => {
@@ -30,17 +27,20 @@ const Background = () => {
 
   useEffect(() => {
     const calculateBackgroundPosition = () => {
+      const now = toZonedTime (new Date(), timeZone);
       const startOfToday = startOfDay(now);
       const totalMinutes = differenceInMinutes(now, startOfToday);
       const totalMinutesInDay = 1440;
       const percentage = totalMinutes / totalMinutesInDay;
 
       const viewportHeight = window.innerHeight;
-      const backgroundHeight = 9 * viewportHeight;
+      const backgroundHeight = 10 * viewportHeight;
       const newPosition = -(((backgroundHeight * percentage) - viewportHeight / 2).toFixed(2));
 
       setPercentageWidth(percentage * 100);
+
       return newPosition;
+
     };
 
 
@@ -64,6 +64,8 @@ if (cachedPosition) {
   updateBackgroundPosition();
 }
 
+const now = toZonedTime (new Date(), timeZone);
+
 const percentage = differenceInMinutes(now, startOfDay(now)) / (24 * 60);
 if (percentage >= 0.9986 || percentage <= 0.0014) {
   setBgTransition('background-position-y 0s ease-in-out');
@@ -79,7 +81,7 @@ return () => {
   return (
     <>
     <div
-      className="background-container fixed h-[900dvh] top-0 left-0 w-screen"
+      className="background-container fixed h-[1000dvh] top-0 left-0 w-screen"
       style={{
         backgroundImage: gradientString,
         backgroundPosition: `center ${backgroundPosition}px`,

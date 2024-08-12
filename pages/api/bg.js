@@ -38,7 +38,7 @@ const generateBackgroundGradient = (sunData) => {
   percentagesArray[2] += 8;
   percentagesArray.sort((a, b) => a - b);
 
-  const colors = ['#18181B', '#e48239', '#38BDF8', '#38BDF8', '#ce4993', '#18181B'];
+  const colors = ['#18181B', '#e48239', '#38BDF8', '#38BDF8', '#d47e97', '#18181B'];
   const gradientStops = colors.map((color, index) => {
     const percentage = percentagesArray[index];
 

@@ -33,7 +33,7 @@ const generateBackgroundGradient = (sunData) => {
 
 
   percentagesArray[0] = parseFloat((percentagesArray[0] - 6).toFixed(1));
-  percentagesArray[4] += 3;
+  percentagesArray[4] += 5;
   percentagesArray.push(percentagesArray[2] - 20);
   percentagesArray[2] += 8;
   percentagesArray.sort((a, b) => a - b);

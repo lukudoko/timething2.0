@@ -34,7 +34,7 @@ const Background = () => {
       const percentage = totalMinutes / totalMinutesInDay;
 
       const viewportHeight = window.innerHeight;
-      const backgroundHeight = 10 * viewportHeight;
+      const backgroundHeight = 9 * viewportHeight;
       const newPosition = -(((backgroundHeight * percentage) - viewportHeight / 2).toFixed(2));
 
       setPercentageWidth(percentage * 100);
@@ -81,7 +81,7 @@ return () => {
   return (
     <>
     <div
-      className="background-container fixed h-[1000dvh] top-0 left-0 w-screen"
+      className="background-container fixed h-[900dvh] top-0 left-0 w-screen"
       style={{
         backgroundImage: gradientString,
         backgroundPosition: `center ${backgroundPosition}px`,

@@ -85,7 +85,7 @@ const createWeatherWidget = (weatherData) => {
     } else {
 
       const weatherContent = (
-        <div className="flex justify-center items-center max-h-full w-full" id="weather">
+        <div className="flex px-2 justify-center items-center max-h-full w-full" id="weather">
           <img className="h-16" src={`https://openweathermap.org/img/wn/${icon}@2x.png`} alt="Weather Icon" />
           <div className="text-xl font-semibold text-center text-zinc-800">{temp}°C</div>
         </div>

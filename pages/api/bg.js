@@ -15,12 +15,16 @@ const generateBackgroundGradient = (sunData) => {
   }
 
   const times = [
-    sunData.civil_twilight_begin,
+    sunData.astronomical_twilight_begin,
+    sunData.nautical_twilight_begin,
     sunData.sunrise,
     sunData.solar_noon,
     sunData.sunset,
-    sunData.civil_twilight_end,
+    sunData.nautical_twilight_end,
+    sunData.astronomical_twilight_end,
   ];
+
+
 
   const totalDayDurationMinutes = 24 * 60;
   const percentagesArray = times.map(value => {
@@ -31,19 +35,13 @@ const generateBackgroundGradient = (sunData) => {
   });
 
 
-
-  percentagesArray[0] = parseFloat((percentagesArray[0] - 6).toFixed(1));
-  percentagesArray[4] += 5;
-  percentagesArray.push(percentagesArray[2] - 20);
-  percentagesArray[2] += 8;
+  percentagesArray.push(percentagesArray[3] - 17);
+  percentagesArray[3] += 17;
   percentagesArray.sort((a, b) => a - b);
 
-  const colors = ['#18181B', '#e48239', '#38BDF8', '#38BDF8', '#d47e97', '#18181B'];
+  const colors = ['#051937', '#8e3661', '#e48239', '#38BDF8', '#38BDF8', '#d47e97', '#6c4771', '#051937'];
   const gradientStops = colors.map((color, index) => {
     const percentage = percentagesArray[index];
-
-
-    console.log(percentage);
 
     return `${color} ${percentage}%`;
   });

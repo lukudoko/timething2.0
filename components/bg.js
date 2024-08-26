@@ -35,7 +35,7 @@ const Background = () => {
 
       const viewportHeight = window.innerHeight;
       const backgroundHeight = 9 * viewportHeight;
-      const newPosition = -(((backgroundHeight * percentage) - viewportHeight / 2).toFixed(2));
+      const newPosition = -((backgroundHeight * percentage).toFixed(2));
 
       setPercentageWidth(percentage * 100);
 

@@ -6,67 +6,67 @@ const Background = () => {
   const [backgroundPosition, setBackgroundPosition] = useState(0);
   const [bgTransition, setBgTransition] = useState('none'); // No transition initially
   const [percentageWidth, setPercentageWidth] = useState(0);
-  const [gradientString, setGradientString] = useState('');
-  const [opacity, setOpacity] = useState(0); // Initial opacity for fade-in effect
-  const timeZone = 'Europe/Stockholm'; // CEST timezone
+  const [gradientString, setGradientString] = useState('linear-gradient(to right, #000, #fff)'); // Default gradient
+  const [opacity, setOpacity] = useState(0);
+  const timeZone = 'Europe/Stockholm';
 
   const fetchGradient = async () => {
     try {
       const response = await fetch('/api/bg?type=gradient');
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
+      }
       const data = await response.json();
       setGradientString(data.gradient);
     } catch (error) {
       console.error('Error fetching gradient data:', error);
+      // Set a default or fallback gradient string here if necessary
     }
   };
 
+  // Define calculateBackgroundPosition function
+  const calculateBackgroundPosition = () => {
+    const now = toZonedTime(new Date(), timeZone);
+    const startOfToday = startOfDay(now);
+    const totalMinutes = differenceInMinutes(now, startOfToday);
+    const totalMinutesInDay = 1440;
+    const percentage = totalMinutes / totalMinutesInDay;
+
+    const viewportHeight = window.innerHeight;
+    const backgroundHeight = 10 * viewportHeight;
+    const newPosition = -((backgroundHeight * percentage).toFixed(2));
+    setPercentageWidth(percentage * 100);
+
+    return newPosition;
+  };
+
+  // Define updateBackgroundPosition function
+  const updateBackgroundPosition = () => {
+    const position = calculateBackgroundPosition();
+    setBackgroundPosition(position);
+    localStorage.setItem('backgroundPosition', position.toString());
+  };
+
   useEffect(() => {
-    // Fetch gradient and set initial opacity
     fetchGradient().then(() => {
-      setOpacity(1); // Fade in after fetching gradient
+      setOpacity(1);
     });
 
     const cachedPosition = localStorage.getItem('backgroundPosition');
 
-    // If there's a cached position, set it without transition
     if (cachedPosition) {
       setBackgroundPosition(parseFloat(cachedPosition));
     } else {
-      updateBackgroundPosition(); // Calculate initial position if no cache
+      updateBackgroundPosition(); // Only run if no cache
     }
 
-    const updateBackgroundPosition = () => {
-      const position = calculateBackgroundPosition();
-      setBackgroundPosition(position);
-      localStorage.setItem('backgroundPosition', position.toString());
-    };
-
-    const calculateBackgroundPosition = () => {
-      const now = toZonedTime(new Date(), timeZone);
-      const startOfToday = startOfDay(now);
-      const totalMinutes = differenceInMinutes(now, startOfToday);
-      const totalMinutesInDay = 1440;
-      const percentage = totalMinutes / totalMinutesInDay;
-
-      const viewportHeight = window.innerHeight;
-      const backgroundHeight = 10 * viewportHeight;
-      const newPosition = -((backgroundHeight * percentage).toFixed(2));
-      setPercentageWidth(percentage * 100);
-
-      return newPosition;
-    };
-
-    // After the first render, apply a transition for future updates
-    const handleTransition = () => {
-      setBgTransition('background-position-y 1s ease-in-out');
-    };
-
-    // Trigger transition after initial load
     if (cachedPosition) {
-      setTimeout(handleTransition, 100); // Small timeout to allow initial load
+      setTimeout(() => {
+        setBgTransition('background-position-y 1s ease-in-out');
+      }, 100);
     }
 
-    const intervalId = setInterval(updateBackgroundPosition, 1000); // Update every second
+    const intervalId = setInterval(updateBackgroundPosition, 1000);
 
     return () => {
       clearInterval(intervalId);

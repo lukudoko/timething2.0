@@ -34,9 +34,9 @@ const Background = () => {
       const percentage = totalMinutes / totalMinutesInDay;
 
       const viewportHeight = window.innerHeight;
-      const backgroundHeight = 9 * viewportHeight;
+      const backgroundHeight = 10 * viewportHeight;
       const newPosition = -((backgroundHeight * percentage).toFixed(2));
-
+console.log(backgroundHeight);
       setPercentageWidth(percentage * 100);
 
       return newPosition;
@@ -68,7 +68,7 @@ const now = toZonedTime (new Date(), timeZone);
 
 const percentage = differenceInMinutes(now, startOfDay(now)) / (24 * 60);
 if (percentage >= 0.9986 || percentage <= 0.0014) {
-  setBgTransition('background-position-y 0s ease-in-out');
+  setBgTransition('background-position-y 0s none');
 }
 
 const intervalId = setInterval(updateBackgroundPosition,  1000);
@@ -81,7 +81,7 @@ return () => {
   return (
     <>
     <div
-      className="background-container fixed h-[900dvh] top-0 left-0 w-screen"
+      className="background-container fixed h-[1000dvh] top-0 left-0 w-screen"
       style={{
         backgroundImage: gradientString,
         backgroundPosition: `center ${backgroundPosition}px`,

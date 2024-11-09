@@ -34,30 +34,28 @@ function Time() {
 
   return (
     <div id="container" className="z-50 font-fit flex justify-center items-center h-fit relative">
-      <AnimatePresence mode="wait">
+      <AnimatePresence className="flex" mode="wait">
         <motion.div
           key={hours}
-          className="align-center font-bold text-[25vw] bg-gradient-to-b from-slate-50 to-zinc-50 text-transparent bg-clip-text leading-[1.1]"
+          className="flex items-center justify-center font-bold text-[25vw] bg-gradient-to-b from-slate-50 to-zinc-50 text-transparent bg-clip-text leading-[1.1]"
           {...fadeInConfig(0)} 
         >
           {hours}
         </motion.div>
       </AnimatePresence>
 
-        
-          <motion.div
-            key="colon"
-            className="align-center font-bold text-[25vw] bg-gradient-to-b from-slate-50 to-zinc-50 text-transparent bg-clip-text leading-[1.1]"
-            {...fadeInConfig(0.25)} 
-          >
-            :
-          </motion.div>
-       
+      {/* Centered Colon */}
+      <motion.div
+        className="flex items-center justify-center font-bold text-[25vw] bg-gradient-to-b from-slate-50 to-zinc-50 text-transparent bg-clip-text leading-[1.1]"
+        {...fadeInConfig(0.3)} 
+      >
+        :
+      </motion.div>
 
       <AnimatePresence mode="wait">
         <motion.div
           key={minutes}
-          className="align-center font-bold text-[25vw] bg-gradient-to-b from-slate-50 to-zinc-50 text-transparent bg-clip-text leading-[1.1]"
+          className="flex items-center justify-center font-bold text-[25vw] bg-gradient-to-b from-slate-50 to-zinc-50 text-transparent bg-clip-text leading-[1.1]"
           {...fadeInConfig(0)} 
         >
           {minutes}
@@ -67,7 +65,7 @@ function Time() {
       <AnimatePresence mode="wait">
         <motion.div
           key={amPm}
-          className="align-center font-extralight text-[6vw] bg-gradient-to-b from-slate-50 to-zinc-50 text-transparent bg-clip-text"
+          className="flex items-center justify-center font-extralight text-[6vw] bg-gradient-to-b from-slate-50 to-zinc-50 text-transparent bg-clip-text"
           {...fadeInConfig(0.3)} 
         >
           {amPm}

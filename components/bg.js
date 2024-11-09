@@ -6,7 +6,7 @@ const Background = () => {
   const [backgroundPosition, setBackgroundPosition] = useState(0);
   const [bgTransition, setBgTransition] = useState('none'); // No transition initially
   const [percentageWidth, setPercentageWidth] = useState(0);
-  const [gradientString, setGradientString] = useState('linear-gradient(to right, #000, #fff)'); // Default gradient
+  const [gradientString, setGradientString] = useState('linear-gradient(to right, #051937, #051937)'); // Default gradient
   const [opacity, setOpacity] = useState(0);
   const timeZone = 'Europe/Stockholm';
 

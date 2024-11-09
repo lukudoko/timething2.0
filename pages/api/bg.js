@@ -17,9 +17,11 @@ const generateBackgroundGradient = (sunData) => {
   const times = [
     sunData.astronomical_twilight_begin,
     sunData.nautical_twilight_begin,
+    sunData.civil_twilight_begin,
     sunData.sunrise,
     sunData.solar_noon,
     sunData.sunset,
+    sunData.civil_twilight_end,
     sunData.nautical_twilight_end,
     sunData.astronomical_twilight_end,
   ];
@@ -34,19 +36,19 @@ const generateBackgroundGradient = (sunData) => {
     return parseFloat(((minutesSinceMidnight / totalDayDurationMinutes) * 100).toFixed(1));
   });
 
-
-  percentagesArray.push(percentagesArray[3] - 17);
-  percentagesArray[3] += 17;
+  percentagesArray[3] += 5;
+  percentagesArray[5] -= 5;
   percentagesArray.sort((a, b) => a - b);
 
-  const colors = ['#051937', '#8e3661', '#e48239', '#38BDF8', '#38BDF8', '#d47e97', '#6c4771', '#051937'];
+  const colors = ['#051937', '#8e3661', '#e48239', '#38BDF8', '#38BDF8', '#38BDF8','#d47e97', '#6c4771', '#051937'];
   const gradientStops = colors.map((color, index) => {
     const percentage = percentagesArray[index];
 
     return `${color} ${percentage}%`;
   });
 
-  return `linear-gradient(to bottom, ${gradientStops.join(', ')})`;
+
+ return `linear-gradient(to bottom, ${gradientStops.join(', ')})`;
 };
 
 export default async function handler(req, res) {
@@ -58,7 +60,7 @@ export default async function handler(req, res) {
 
   if (!cachedData) {
     try {
-      const apiEndpoint = 'https://api.sunrise-sunset.org/json?lat=57.6529&lng=11.9106&formatted=0&tzid=CEST';
+      const apiEndpoint = 'https://api.sunrise-sunset.org/json?lat=57.6529&lng=11.9106&formatted=0&tzid=CET';
       const response = await fetch(apiEndpoint);
 
       if (!response.ok) {
@@ -82,6 +84,7 @@ export default async function handler(req, res) {
   // Handle different query types
   if (type === 'gradient') {
     let cachedGradient = cache.get(gradientCacheKey);
+ 
 
     if (!cachedGradient) {
       const gradient = generateBackgroundGradient(cachedData);

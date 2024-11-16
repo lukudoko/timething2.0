@@ -148,7 +148,7 @@ const Background = () => {
             const now = new Date();
             const currentTime = now.getHours() * 60 + now.getMinutes();
             const timeFraction = (currentTime / 1440).toFixed(4);
-            //const timeFraction = .28
+
             drawSky(
                 backgroundCtx,
                 starsCtx,

@@ -1,74 +1,101 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { format } from 'date-fns';
 import { toZonedTime } from 'date-fns-tz';
 import { AnimatePresence, motion } from 'framer-motion';
 
+const TIME_ZONE = 'Europe/Stockholm';
+const UPDATE_INTERVAL = 1000; // 1 second
+
 function Time() {
-  const timeZone = 'Europe/Stockholm'; // CEST timezone
-  const [time, setTime] = useState('');
-  const [hasTimeLoaded, setHasTimeLoaded] = useState(false); // Track if time has been loaded
+  const [time, setTime] = useState(new Date());
+  const [hasTimeLoaded, setHasTimeLoaded] = useState(false);
+
+  // Memoize the animation config to prevent recreating on every render
+  const fadeInConfig = useMemo(() => (delay = 0) => ({
+    initial: { opacity: 0, y: 50 },
+    animate: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        type: 'spring',
+        bounce: 0.5,
+        duration: 2,
+        delay
+      }
+    },
+    exit: {
+      opacity: 0,
+      y: -50,
+      transition: {
+        duration: 0.3
+      }
+    },
+  }), []);
+
+  // Memoize the formatted time values
+  const timeValues = useMemo(() => {
+    const zonedTime = toZonedTime(time, TIME_ZONE);
+    return {
+      hours: format(zonedTime, 'h'),
+      minutes: format(zonedTime, 'mm'),
+      amPm: format(zonedTime, 'aaa'),
+      //seconds: format(zonedTime, 'ss') // Added seconds for internal use
+    };
+  }, [time]);
 
   useEffect(() => {
     const updateTime = () => {
-      const now = new Date();
-      const zonedTime = toZonedTime(now, timeZone);
-      setTime(zonedTime);
-      setHasTimeLoaded(true); // Set to true after first time update
+      setTime(new Date());
+      if (!hasTimeLoaded) setHasTimeLoaded(true);
     };
 
-    updateTime(); // Set initial time
-    const interval = setInterval(updateTime, 1000); // Update every second
+    updateTime();
+    const interval = setInterval(updateTime, UPDATE_INTERVAL);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [hasTimeLoaded]);
 
-  const hours = time ? format(time, 'h') : '';
-  const minutes = time ? format(time, 'mm') : '';
-  const amPm = time ? format(time, 'aaa') : '';
+  // Common class for time segments
+  const timeSegmentClass = "flex items-center justify-center font-bold text-[25vw] bg-gradient-to-b from-slate-50 to-zinc-50 text-transparent bg-clip-text leading-[1.1]";
 
-  const fadeInConfig = (delay = 0) => ({
-    initial: { opacity: 0, y: 50 },
-    animate: { opacity: 1, y: 0, transition: { type: 'spring', bounce: 0.5, duration: 2, delay } },
-    exit: { opacity: 0, y: -50, transition: { duration: 0.3 } },
-  });
+  if (!hasTimeLoaded) return null; // Prevent flash of unstyled content
 
   return (
-    <div id="container" className="z-50 font-fit flex justify-center items-center h-fit relative">
-      <AnimatePresence className="flex" mode="wait">
+    <div className="z-50 font-fit flex relative w-fit justify-center items-center h-fit">
+      <AnimatePresence mode="wait">
         <motion.div
-          key={hours}
-          className="flex items-center justify-center font-bold text-[25vw] bg-gradient-to-b from-slate-50 to-zinc-50 text-transparent bg-clip-text leading-[1.1]"
-          {...fadeInConfig(0)} 
+          key={timeValues.hours}
+          className={timeSegmentClass}
+          {...fadeInConfig(0)}
         >
-          {hours}
+          {timeValues.hours}
         </motion.div>
       </AnimatePresence>
 
-      {/* Centered Colon */}
       <motion.div
-        className="flex items-center justify-center font-bold text-[25vw] bg-gradient-to-b from-slate-50 to-zinc-50 text-transparent bg-clip-text leading-[1.1]"
-        {...fadeInConfig(0.3)} 
+        className={timeSegmentClass}
+        {...fadeInConfig(0)}
       >
         :
       </motion.div>
 
       <AnimatePresence mode="wait">
         <motion.div
-          key={minutes}
-          className="flex items-center justify-center font-bold text-[25vw] bg-gradient-to-b from-slate-50 to-zinc-50 text-transparent bg-clip-text leading-[1.1]"
-          {...fadeInConfig(0)} 
+          key={timeValues.minutes}
+          className={timeSegmentClass}
+          {...fadeInConfig(0)}
         >
-          {minutes}
+          {timeValues.minutes}
         </motion.div>
       </AnimatePresence>
 
       <AnimatePresence mode="wait">
         <motion.div
-          key={amPm}
+          key={timeValues.amPm}
           className="flex items-center justify-center font-extralight text-[6vw] bg-gradient-to-b from-slate-50 to-zinc-50 text-transparent bg-clip-text"
-          {...fadeInConfig(0.3)} 
+          {...fadeInConfig(0.3)}
         >
-          {amPm}
+          {timeValues.amPm}
         </motion.div>
       </AnimatePresence>
     </div>

@@ -2,12 +2,14 @@ import React, { useEffect, useState, useRef, useMemo, useCallback } from "react"
 import chroma from "chroma-js";
 import { toZonedTime } from 'date-fns-tz';
 import { motion } from "framer-motion";
+import WeatherCanvas from "@/components/weather"; // Import WeatherCanvas
 
 const STARS_COUNT = 350;
 const TIME_ZONE = 'Europe/Stockholm';
 const ANIMATION_INTERVAL = 5000;
 
-const Background = () => {
+const Background = ({ backgroundReady, setBackgroundReady }) => {
+
     const [timeIndices, setTimeIndices] = useState([]);
     const [percentageWidth, setPercentageWidth] = useState(0);
     const [starsOpacity, setStarsOpacity] = useState(1);
@@ -88,13 +90,13 @@ const Background = () => {
     const drawSky = useCallback((backgroundCtx, starsCtx, timeFraction, width, height) => {
         if (timeIndices.length === 0) return;
 
-        let currentIndex = timeIndices.findIndex((_, i) => 
+        let currentIndex = timeIndices.findIndex((_, i) =>
             timeIndices[i + 1]?.time > timeFraction * 100 || i === timeIndices.length - 1
         );
         if (currentIndex === -1) currentIndex = timeIndices.length - 1;
         const nextIndex = (currentIndex + 1) % timeIndices.length;
 
-        const progress = (timeFraction * 100 - timeIndices[currentIndex].time) / 
+        const progress = (timeFraction * 100 - timeIndices[currentIndex].time) /
             (timeIndices[nextIndex].time - timeIndices[currentIndex].time);
 
         const { color1: startTop, color2: startBottom } = timeIndices[currentIndex].gradient;
@@ -112,6 +114,7 @@ const Background = () => {
         }
 
         setIsReady(true);
+        setBackgroundReady(true);
     }, [timeIndices, lerpColor, drawStars]);
 
     // Calculate stars opacity
@@ -148,7 +151,8 @@ const Background = () => {
             const now = new Date();
             const currentTime = now.getHours() * 60 + now.getMinutes();
             const timeFraction = (currentTime / 1440).toFixed(4);
-            //const timeFraction = .28
+        
+
             drawSky(
                 backgroundCtx,
                 starsCtx,
@@ -157,7 +161,11 @@ const Background = () => {
                 backgroundCanvas.height
             );
             calculateStarsOpacity(timeFraction);
-            setPercentageWidth(timeFraction * 100);
+
+            setTimeout(() => {
+                setPercentageWidth(timeFraction * 100);
+              }, 1000);
+            
         };
 
         const handleResize = () => {

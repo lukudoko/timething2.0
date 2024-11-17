@@ -1,8 +1,9 @@
 'use client';
 import React, { useState, useEffect } from "react";
 import Time from '@/components/time';
-import Background from '@/components/bg';
+import Background from "@/components/skytest";
 import AppTray from '@/components/widgets';
+import WeatherCanvas from "@/components/weather"; // Import WeatherCanvas
 
 const Normal = () => {
     const [backgroundReady, setBackgroundReady] = useState(false);
@@ -19,6 +20,7 @@ const Normal = () => {
             </div>
             </div>
                     <Background backgroundReady={backgroundReady} setBackgroundReady={setBackgroundReady} /> 
+                    <WeatherCanvas />      
         </div>
     );
 };

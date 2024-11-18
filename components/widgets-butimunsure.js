@@ -144,20 +144,46 @@ const AppTray = () => {
     // Set up an interval for periodic updates
     const intervalId = setInterval(() => {
       handleAddWeatherWidget();
-    }, 15 * 60 * 1000  ); // 15 minutes
+      console.log("ping!")
+    }, 9000); // 15 minutes
 
     // Cleanup the interval on component unmount
     return () => clearInterval(intervalId);
   }, [handleAddWeatherWidget]);
 
 
+
+
+
+
   return (
     <div className="z-50 w-full h-16 flex justify-evenly" id="appTray">
+      <div className="absolute top-5 mb-4">
+        <button
+          className="p-2 bg-blue-500 text-white rounded m-2"
+          onClick={handleAddWidget}
+        >
+          Add Generic Widget
+        </button>
+        <button
+          className="p-2 bg-green-500 text-white rounded m-2"
+          onClick={handleAddWeatherWidget}
+        >
+          Add Weather Widget
+        </button>
+        <button
+          className="p-2 bg-yellow-500 text-white rounded m-2"
+          onClick={handleAddNewsWidget}
+        >
+          Add News Widget
+        </button>
+      </div>
+
       <AnimatePresence>
         {widgets.map((widget, index) => (
           <motion.div
             key={widget.id}
-            className="flex font-fit backdrop-blur-md bg-white/20 text-neutral-800 rounded-2xl min-w-fit w-1/4 max-w-[11vw] h-full shadow-[rgba(50,_50,_105,_0.15)_0px_2px_5px_0px,_rgba(0,_0,_0,_0.05)_0px_1px_1px_0px] justify-center items-center"
+            className="flex font-fit backdrop-blur-md bg-white/20 text-neutral-800 rounded-lg min-w-fit w-1/4 max-w-[11vw] h-full shadow-[rgba(50,_50,_105,_0.15)_0px_2px_5px_0px,_rgba(0,_0,_0,_0.05)_0px_1px_1px_0px] justify-center items-center"
             initial={{ opacity: 0, x: 300 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{

@@ -136,9 +136,13 @@ const AppTray = () => {
   }, [addWidget]);
 
   useEffect(() => {
-    // Run the weather widget addition once on mount
-    handleAddWeatherWidget();
+    const timeoutId = setTimeout(() => {
+      handleAddWeatherWidget();
+    }, 1500); // 2000 milliseconds = 2 seconds
+  
+    return () => clearTimeout(timeoutId); // Cleanup timeout if the component unmounts
   }, []); // Empty dependency array ensures this runs only once on mount
+  
 
   useEffect(() => {
     // Set up an interval for periodic updates

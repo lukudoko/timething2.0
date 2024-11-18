@@ -15,7 +15,8 @@ const Normal = () => {
             <div className='flex justify-center'>
             <div className="flex flex-col justify-center w-fit min-h-screen">
             {backgroundReady && <Time /> }
-            <AppTray/> 
+            {backgroundReady &&   <AppTray/>  }
+          
             </div>
             </div>
                     <Background backgroundReady={backgroundReady} setBackgroundReady={setBackgroundReady} /> 

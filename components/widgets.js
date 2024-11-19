@@ -91,11 +91,9 @@ const AppTray = () => {
 const handleAddMusicWidget = useCallback(() => {
   const client = mqtt.connect('ws://192.168.3.41:9001');
   let debounceTimeout;
+  let inactivityTimeout; // Timeout to remove the widget on inactivity
   
-  // State to store the current song information
   let songData = { title: null, artist: null, artwork: null };
-  
-  // Store the final stable song data after debounce
   let stableSongData = { title: null, artist: null, artwork: null };
 
   const arrayBufferToBase64 = (buffer) => {
@@ -115,61 +113,66 @@ const handleAddMusicWidget = useCallback(() => {
 
   client.on('message', (topic, message) => {
     if (topic === 'shairport/title') {
-      songData.title = message.toString(); // Update song title
+      songData.title = message.toString();
     }
     if (topic === 'shairport/artist') {
-      songData.artist = message.toString(); // Update artist
+      songData.artist = message.toString();
     }
     if (topic === 'shairport/cover') {
-      // Convert ArrayBuffer to Base64 and create a data URL
       const base64 = arrayBufferToBase64(message);
       songData.artwork = `data:image/jpeg;base64,${base64}`;
     }
 
-    // After receiving all the necessary data (title, artist, artwork)
-    if (songData.artwork) {
-      clearTimeout(debounceTimeout); // Clear any existing debounce timeout
+    // Clear the inactivity timeout whenever a new message is received
+    clearTimeout(inactivityTimeout);
 
-      // Debounce: wait until the data has settled
+    if (songData.artwork) {
+      clearTimeout(debounceTimeout);
+
       debounceTimeout = setTimeout(() => {
-        stableSongData = { ...songData }; // Store stable data after debounce
+        stableSongData = { ...songData };
 
         const currentWidgets = widgetsRef.current;
         const musicWidget = currentWidgets.find(widget => widget.id === 'music');
 
-        // Check if the artwork is already the same
         const existingArtwork = musicWidget?.content?.props?.children?.props?.src;
-        
+
         if (stableSongData.artwork === existingArtwork) {
-          return; // No need to update if the artwork hasn't changed
+          return;
         }
 
-        // Create or update the music widget with just the album artwork
         const musicContent = (
-          <div className="flex flex-row w-full justify-center items-center">
+          <div className="flex relative h-full flex-row w-full justify-center items-center">
             <img
-              className="h-14 aspect-square opacity-85 rounded"
+              className="h-14 aspect-square rounded"
               src={stableSongData.artwork}
               alt="Album artwork"
             />
+            <div className="absolute saturate-200 blur-md -z-10 h-full w-full bg-cover bg-center"
+                  style={{ backgroundImage: `url(${stableSongData.artwork})` }}></div>
           </div>
         );
 
-        addWidget('music', musicContent); // Add or update the widget
-      }, 2000); // Debounce time of 2 seconds
+        addWidget('music', musicContent);
+      }, 2000); // Debounce for 2 seconds
     }
+
+    // Set a timeout to remove the widget after 10 seconds of inactivity
+    inactivityTimeout = setTimeout(() => {
+      removeWidget('music'); // Remove the music widget
+    }, 15000); // 30 seconds
   });
 
   client.on('error', (error) => {
     console.error('MQTT error:', error);
   });
 
-  // Cleanup function to disconnect the client
   return () => {
-    clearTimeout(debounceTimeout); // Clear timeout on cleanup
+    clearTimeout(debounceTimeout);
+    clearTimeout(inactivityTimeout);
     client.end();
   };
-}, [addWidget]);
+}, [addWidget, removeWidget]);
 
 
 
@@ -252,7 +255,7 @@ const handleAddMusicWidget = useCallback(() => {
         {widgets.map((widget, index) => (
           <motion.div
             key={widget.id}
-            className="flex font-fit  overflow-hidden backdrop-blur-md bg-white/20 text-neutral-800 rounded-2xl min-w-fit w-1/4 max-w-[11vw] h-full shadow-[rgba(50,_50,_105,_0.15)_0px_2px_5px_0px,_rgba(0,_0,_0,_0.05)_0px_1px_1px_0px] justify-center items-center"
+            className="flex font-fit  overflow-hidden backdrop-blur-md bg-white/30 text-neutral-800 rounded-2xl min-w-fit w-1/4 max-w-[11vw] h-full shadow-[rgba(50,_50,_105,_0.15)_0px_2px_5px_0px,_rgba(0,_0,_0,_0.05)_0px_1px_1px_0px] justify-center items-center"
             initial={{ opacity: 0, x: 300 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{

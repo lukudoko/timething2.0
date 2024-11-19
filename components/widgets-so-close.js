@@ -1,11 +1,23 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import mqtt from 'mqtt';
 
 const AppTray = () => {
   const [widgets, setWidgets] = useState([]);
+  const widgetsRef = useRef(widgets); // Track the current state
   const [isCooldown, setIsCooldown] = useState(false); // Cooldown state
 
   const MAX_WIDGETS = 4;
+
+  useEffect(() => {
+    widgetsRef.current = widgets;
+  }, [widgets]);
+
+
+  // Function to remove a widget by ID
+  const removeWidget = useCallback((id) => {
+    setWidgets(prevWidgets => prevWidgets.filter(widget => widget.id !== id));
+  }, []);
 
   // Generalized function to create a widget
   const addWidget = useCallback((id, content) => {
@@ -19,7 +31,10 @@ const AppTray = () => {
 
     const handleAddition = () => {
       setWidgets(prevWidgets => {
-        let updatedWidgets = [...prevWidgets];
+        // Use widgetsRef to get the current state of widgets
+        const currentWidgets = widgetsRef.current;
+
+        let updatedWidgets = [...currentWidgets]; // Start with the latest state
 
         // If widget limit is reached, remove the oldest widget
         if (updatedWidgets.length >= MAX_WIDGETS) {
@@ -41,19 +56,19 @@ const AppTray = () => {
       setTimeout(() => setIsCooldown(false), 500); // 200ms cooldown
     };
 
-    const existingWidget = widgets.find(widget => widget.id === id);
+    // Check if the widget already exists by checking widgetsRef
+    const existingWidget = widgetsRef.current.find(widget => widget.id === id);
     if (existingWidget) {
-      removeWidget(id);
+      removeWidget(id); // Ensure `removeWidget` is defined and available
       setTimeout(handleAddition, 1000); // Wait for removal before adding the new widget
     } else {
       handleAddition(); // Add directly if no duplicates
     }
-  }, [widgets, isCooldown]);
+  }, [isCooldown, removeWidget]); // `removeWidget` included as a dependency
 
-  // Function to remove a widget by ID
-  const removeWidget = useCallback((id) => {
-    setWidgets(prevWidgets => prevWidgets.filter(widget => widget.id !== id));
-  }, []);
+
+
+
 
   // Add a generic widget
   const handleAddWidget = () => {
@@ -77,8 +92,144 @@ const AppTray = () => {
 
 
 
+  ////
+
+  const handleAddMusicWidget = useCallback(() => {
+    const client = mqtt.connect('ws://192.168.3.41:9001');
+    let debounceTimeout;
+    
+    // State to store the current song information
+    let songData = { title: null, artist: null, artwork: null };
+    
+    // Store the final stable song data after debounce
+    let stableSongData = { title: null, artist: null, artwork: null };
+  
+    const arrayBufferToBase64 = (buffer) => {
+      let binary = '';
+      const bytes = new Uint8Array(buffer);
+      const len = bytes.byteLength;
+      for (let i = 0; i < len; i++) {
+        binary += String.fromCharCode(bytes[i]);
+      }
+      return window.btoa(binary);
+    };
+  
+    client.on('connect', () => {
+      console.log('Connected to MQTT broker');
+      client.subscribe('shairport/#'); // Subscribe to relevant topics
+    });
+  
+    client.on('message', (topic, message) => {
+      if (topic === 'shairport/title') {
+        songData.title = message.toString(); // Update song title
+      }
+      if (topic === 'shairport/artist') {
+        songData.artist = message.toString(); // Update artist
+      }
+      if (topic === 'shairport/cover') {
+        // Convert ArrayBuffer to Base64 and create a data URL
+        const base64 = arrayBufferToBase64(message);
+        songData.artwork = `data:image/jpeg;base64,${base64}`;
+      }
+  
+      // After receiving all the necessary data (title, artist, artwork)
+      if (songData.title && songData.artist && songData.artwork) {
+        clearTimeout(debounceTimeout); // Clear any existing debounce timeout
+  
+        // Debounce: wait until the data has settled
+        debounceTimeout = setTimeout(() => {
+          stableSongData = { ...songData }; // Store stable data after debounce
+  
+          // Log out the new song data and current widget for debugging
+          console.log('Stable song data:', stableSongData);
+  
+          const currentWidgets = widgetsRef.current;
+          const musicWidget = currentWidgets.find(widget => widget.id === 'music');
+  
+          if (musicWidget) {
+            // Extract the actual title and artist from the widget's React element structure
+            const titleElement = musicWidget.content.props.children[1].props.children[0];
+            const artistElement = musicWidget.content.props.children[1].props.children[1];
+  
+            // Ensure we're extracting the text content from the React elements
+            const existingTitle = titleElement.props ? titleElement.props.children : titleElement;
+            const existingArtist = artistElement.props ? artistElement.props.children : artistElement;
+  
+            // Debugging log for widget comparison
+            console.log('Comparing with current widget:');
+            console.log('Existing Title:', existingTitle, 'New Title:', stableSongData.title);
+            console.log('Existing Artist:', existingArtist, 'New Artist:', stableSongData.artist);
+  
+            // If the title and artist are the same, don't update
+            if (
+              stableSongData.title === existingTitle &&
+              stableSongData.artist === existingArtist
+            ) {
+              console.log('Song is the same, no update needed');
+              return; // No need to update if the song hasn't changed
+            }
+          }
+  
+          // Log if the widget will be updated
+          console.log('New song detected, updating widget:', stableSongData);
+  
+          // Create or update the music widget
+          const musicContent = (
+            <div className="flex flex-row w-full justify-stretch items-center">
+              <img
+                className="h-16 aspect-square rounded"
+                src={stableSongData.artwork}
+                alt={`${stableSongData.title} album artwork`}
+              />
+              <div className="flex flex-col px-0.5">
+                <div className="font-bold">{stableSongData.title || 'Unknown Title'}</div>
+                <div className="text-sm">{stableSongData.artist || 'Unknown Artist'}</div>
+              </div>
+            </div>
+          );
+  
+          addWidget('music', musicContent); // Add or update the widget
+        }, 2000); // Debounce time of 2 seconds
+      }
+    });
+  
+    client.on('error', (error) => {
+      console.error('MQTT error:', error);
+    });
+  
+    // Cleanup function to disconnect the client
+    return () => {
+      clearTimeout(debounceTimeout); // Clear timeout on cleanup
+      client.end();
+    };
+  }, [addWidget]);
+  
+
+
+  useEffect(() => {
+    const cleanup = handleAddMusicWidget();
+    return cleanup; // Ensure cleanup is called on unmount
+  }, [handleAddMusicWidget]);
+
+
+
+
+
+
+
+
+
+  ////
+
+
+
   const handleAddWeatherWidget = useCallback(async () => {
     try {
+      // Use the ref to get the current state of widgets
+      const currentWidgets = widgetsRef.current;
+
+      const existingWeatherWidget = currentWidgets.find(widget => widget.id === 'weather');
+
       // Fetch weather data
       const response = await fetch('/api/weather');
       if (!response.ok) {
@@ -88,26 +239,21 @@ const AppTray = () => {
       const weatherData = await response.json();
       const { weather, main } = weatherData;
       const icon = weather[0].icon;
-      const temp = Math.round(main.temp); // Convert temperature to a whole number
+      const temp = Math.round(main.temp);
       const iconUrl = `https://openweathermap.org/img/wn/${icon}@2x.png`;
 
-      // Check if the weather widget already exists
-      const existingWeatherWidget = widgets.find(widget => widget.id === 'weather');
-
+      // Check if we need to update the widget
       if (existingWeatherWidget) {
         const existingIcon = existingWeatherWidget.content.props.children[0].props.src;
         const existingTemp = existingWeatherWidget.content.props.children[1].props.children[0];
 
-        // Compare icon and temperature; only update if they have changed
+        // If data hasn't changed, don't update the widget
         if (iconUrl === existingIcon && temp === parseInt(existingTemp)) {
-          //  console.log('Weather data has not changed, skipping widget update.');
-          return; // If the data hasn't changed, skip the update
-        } else {
-          // console.log('Weather data has changed, updating widget.');
+          return;
         }
       }
 
-      // Create new weather widget content (or update the existing one)
+      // Create or update the weather widget
       const weatherContent = (
         <>
           <img className="h-12" src={iconUrl} alt={`Weather: ${weather[0].description}`} />
@@ -115,51 +261,45 @@ const AppTray = () => {
         </>
       );
 
-      // Add the updated weather widget (this will replace the old one if the data changed)
-      addWidget("weather", weatherContent);
-
+      addWidget('weather', weatherContent);
     } catch (error) {
       console.error('Error creating or updating weather widget:', error);
     }
-  }, [widgets, addWidget]);
+  }, [addWidget]);
+
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      handleAddWeatherWidget();
+    }, 1500); // 2000 milliseconds = 2 seconds
+    
+  
+    return () => clearTimeout(timeoutId); // Cleanup timeout if the component unmounts
+  }, []); // Empty dependency array ensures this runs only once on mount
+  
+
+
+
+
 
 
   useEffect(() => {
-    const intervalId = setInterval(handleAddWeatherWidget, 15 * 60 * 1000); // Every 15 minutes
-    handleAddWeatherWidget(); // Call immediately on mount
+    // Set up an interval for periodic updates
+    const intervalId = setInterval(() => {
+      handleAddWeatherWidget();
+    }, 15 * 60 * 1000  ); // 15 minutes
 
-    return () => clearInterval(intervalId); // Clean up the interval on unmount
+    // Cleanup the interval on component unmount
+    return () => clearInterval(intervalId);
   }, [handleAddWeatherWidget]);
 
 
   return (
     <div className="z-50 w-full h-16 flex justify-evenly" id="appTray">
-      <div className="absolute top-5 mb-4">
-        <button
-          className="p-2 bg-blue-500 text-white rounded m-2"
-          onClick={handleAddWidget}
-        >
-          Add Generic Widget
-        </button>
-        <button
-          className="p-2 bg-green-500 text-white rounded m-2"
-          onClick={handleAddWeatherWidget}
-        >
-          Add Weather Widget
-        </button>
-        <button
-          className="p-2 bg-yellow-500 text-white rounded m-2"
-          onClick={handleAddNewsWidget}
-        >
-          Add News Widget
-        </button>
-      </div>
-
       <AnimatePresence>
         {widgets.map((widget, index) => (
           <motion.div
             key={widget.id}
-            className="flex font-fit backdrop-blur-md bg-white/20 text-neutral-800 rounded-lg min-w-fit w-1/4 max-w-[11vw] h-full shadow-[rgba(50,_50,_105,_0.15)_0px_2px_5px_0px,_rgba(0,_0,_0,_0.05)_0px_1px_1px_0px] justify-center items-center"
+            className="flex font-fit  overflow-hidden backdrop-blur-md bg-white/20 text-neutral-800 rounded-2xl min-w-fit w-1/4 max-w-[11vw] h-full shadow-[rgba(50,_50,_105,_0.15)_0px_2px_5px_0px,_rgba(0,_0,_0,_0.05)_0px_1px_1px_0px] justify-center items-center"
             initial={{ opacity: 0, x: 300 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{

@@ -209,11 +209,11 @@ const Background = ({ backgroundReady, setBackgroundReady }) => {
             >
                 <canvas
                     ref={backgroundCanvasRef}
-                    className="absolute h-dvh w-full inset-0 z-0"
+                    className="fixed h-dvh w-full inset-0 z-0"
                 />
                 <canvas
                     ref={starsCanvasRef}
-                    className="absolute h-dvh w-full inset-0 z-10"
+                    className="fixed h-dvh w-full inset-0 z-10"
                     style={{ opacity: starsOpacity }}
                 />
             </motion.div>

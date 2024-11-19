@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import mqtt from 'mqtt';
 
 const AppTray = () => {
   const [widgets, setWidgets] = useState([]);
@@ -86,11 +87,100 @@ const AppTray = () => {
     addWidget("news", newsContent); // Add news widget with specific ID
   };
 
+//Music Widget
+const handleAddMusicWidget = useCallback(() => {
+  const client = mqtt.connect('ws://192.168.3.41:9001');
+  let debounceTimeout;
+  
+  // State to store the current song information
+  let songData = { title: null, artist: null, artwork: null };
+  
+  // Store the final stable song data after debounce
+  let stableSongData = { title: null, artist: null, artwork: null };
+
+  const arrayBufferToBase64 = (buffer) => {
+    let binary = '';
+    const bytes = new Uint8Array(buffer);
+    const len = bytes.byteLength;
+    for (let i = 0; i < len; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    return window.btoa(binary);
+  };
+
+  client.on('connect', () => {
+    console.log('Connected to MQTT broker');
+    client.subscribe('shairport/#'); // Subscribe to relevant topics
+  });
+
+  client.on('message', (topic, message) => {
+    if (topic === 'shairport/title') {
+      songData.title = message.toString(); // Update song title
+    }
+    if (topic === 'shairport/artist') {
+      songData.artist = message.toString(); // Update artist
+    }
+    if (topic === 'shairport/cover') {
+      // Convert ArrayBuffer to Base64 and create a data URL
+      const base64 = arrayBufferToBase64(message);
+      songData.artwork = `data:image/jpeg;base64,${base64}`;
+    }
+
+    // After receiving all the necessary data (title, artist, artwork)
+    if (songData.artwork) {
+      clearTimeout(debounceTimeout); // Clear any existing debounce timeout
+
+      // Debounce: wait until the data has settled
+      debounceTimeout = setTimeout(() => {
+        stableSongData = { ...songData }; // Store stable data after debounce
+
+        const currentWidgets = widgetsRef.current;
+        const musicWidget = currentWidgets.find(widget => widget.id === 'music');
+
+        // Check if the artwork is already the same
+        const existingArtwork = musicWidget?.content?.props?.children?.props?.src;
+        
+        if (stableSongData.artwork === existingArtwork) {
+          return; // No need to update if the artwork hasn't changed
+        }
+
+        // Create or update the music widget with just the album artwork
+        const musicContent = (
+          <div className="flex flex-row w-full justify-center items-center">
+            <img
+              className="h-14 aspect-square opacity-85 rounded"
+              src={stableSongData.artwork}
+              alt="Album artwork"
+            />
+          </div>
+        );
+
+        addWidget('music', musicContent); // Add or update the widget
+      }, 2000); // Debounce time of 2 seconds
+    }
+  });
+
+  client.on('error', (error) => {
+    console.error('MQTT error:', error);
+  });
+
+  // Cleanup function to disconnect the client
+  return () => {
+    clearTimeout(debounceTimeout); // Clear timeout on cleanup
+    client.end();
+  };
+}, [addWidget]);
 
 
 
 
+  useEffect(() => {
+    const cleanup = handleAddMusicWidget();
+    return cleanup; // Ensure cleanup is called on unmount
+  }, [handleAddMusicWidget]);
 
+
+//Weather Widget
   const handleAddWeatherWidget = useCallback(async () => {
     try {
       // Use the ref to get the current state of widgets
@@ -139,16 +229,17 @@ const AppTray = () => {
     const timeoutId = setTimeout(() => {
       handleAddWeatherWidget();
     }, 1500); // 2000 milliseconds = 2 seconds
-  
+
+
     return () => clearTimeout(timeoutId); // Cleanup timeout if the component unmounts
   }, []); // Empty dependency array ensures this runs only once on mount
-  
+
 
   useEffect(() => {
     // Set up an interval for periodic updates
     const intervalId = setInterval(() => {
       handleAddWeatherWidget();
-    }, 15 * 60 * 1000  ); // 15 minutes
+    }, 15 * 60 * 1000); // 15 minutes
 
     // Cleanup the interval on component unmount
     return () => clearInterval(intervalId);
@@ -161,7 +252,7 @@ const AppTray = () => {
         {widgets.map((widget, index) => (
           <motion.div
             key={widget.id}
-            className="flex font-fit backdrop-blur-md bg-white/20 text-neutral-800 rounded-2xl min-w-fit w-1/4 max-w-[11vw] h-full shadow-[rgba(50,_50,_105,_0.15)_0px_2px_5px_0px,_rgba(0,_0,_0,_0.05)_0px_1px_1px_0px] justify-center items-center"
+            className="flex font-fit  overflow-hidden backdrop-blur-md bg-white/20 text-neutral-800 rounded-2xl min-w-fit w-1/4 max-w-[11vw] h-full shadow-[rgba(50,_50,_105,_0.15)_0px_2px_5px_0px,_rgba(0,_0,_0,_0.05)_0px_1px_1px_0px] justify-center items-center"
             initial={{ opacity: 0, x: 300 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{

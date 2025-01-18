@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import mqtt from 'mqtt';
+import Image from 'next/image'
 
 const AppTray = () => {
   const [widgets, setWidgets] = useState([]);
@@ -120,18 +121,27 @@ const handleAddMusicWidget = useCallback(() => {
     }
     if (topic === 'shairport/cover') {
       const base64 = arrayBufferToBase64(message);
-      songData.artwork = `data:image/jpeg;base64,${base64}`;
+    
+      // Check if the base64 value indicates missing artwork
+      if (base64 === 'LS0=') {
+        songData.artwork = '/np.webp'; // Substitute your default URL here
+      } else {
+        songData.artwork = `data:image/jpeg;base64,${base64}`;
+      }
+    
+      console.log(base64);
     }
-
-    // Clear the inactivity timeout whenever a new message is received
+    
+    
     clearTimeout(inactivityTimeout);
 
     if (songData.artwork) {
       clearTimeout(debounceTimeout);
+      
 
       debounceTimeout = setTimeout(() => {
         stableSongData = { ...songData };
-
+       //console.log(stableSongData.artwork)
         const currentWidgets = widgetsRef.current;
         const musicWidget = currentWidgets.find(widget => widget.id === 'music');
 
@@ -143,8 +153,10 @@ const handleAddMusicWidget = useCallback(() => {
 
         const musicContent = (
           <div className="flex relative h-full flex-row w-full justify-center items-center">
-            <img
-              className="h-14 aspect-square rounded"
+            <Image
+              className="aspect-square rounded"
+              height={48}
+              width={48}
               src={stableSongData.artwork}
               alt="Album artwork"
             />
@@ -154,13 +166,12 @@ const handleAddMusicWidget = useCallback(() => {
         );
 
         addWidget('music', musicContent);
-      }, 2000); // Debounce for 2 seconds
+      }, 2000); 
     }
 
-    // Set a timeout to remove the widget after 10 seconds of inactivity
     inactivityTimeout = setTimeout(() => {
-      removeWidget('music'); // Remove the music widget
-    }, 15000); // 30 seconds
+      removeWidget('music'); 
+    }, 15000);
   });
 
   client.on('error', (error) => {
@@ -217,7 +228,7 @@ const handleAddMusicWidget = useCallback(() => {
       // Create or update the weather widget
       const weatherContent = (
         <>
-          <img className="h-12" src={iconUrl} alt={`Weather: ${weather[0].description}`} />
+          <Image height="48" width="48" src={iconUrl} alt={`Weather: ${weather[0].description}`} />
           <div className="text-lg font-semibold text-center">{temp}°C</div>
         </>
       );

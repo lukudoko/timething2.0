@@ -1,100 +1,66 @@
-// pages/api/sunrise-sunset.js
 import cache from 'memory-cache';
-import { toZonedTime } from 'date-fns-tz';
 
-const cacheKey = 'sunriseSunsetCache';
-const gradientCacheKey = 'backgroundGradientCache';
-const cacheExpiry = 6 * 60 * 60 * 1000; // 6 hours in milliseconds
-  const timeZone = 'Europe/Stockholm'; // CEST timezone
+const CACHE_KEY_PREFIX = 'sunData-';
+const CACHE_EXPIRY = 6 * 60 * 60 * 1000; // 6 hours
 
-// Function to generate background gradient
-const generateBackgroundGradient = (sunData) => {
-  if (!sunData) {
-    console.error('Error: Sunrise-sunset data not available.');
-    return '';
-  }
-
-  const times = [
-    sunData.astronomical_twilight_begin,
-    sunData.nautical_twilight_begin,
-    sunData.civil_twilight_begin,
-    sunData.sunrise,
-    sunData.solar_noon,
-    sunData.sunset,
-    sunData.civil_twilight_end,
-    sunData.nautical_twilight_end,
-    sunData.astronomical_twilight_end,
-  ];
-
-
-
-  const totalDayDurationMinutes = 24 * 60;
-  const percentagesArray = times.map(value => {
-    const tid = new Date(value);
-    const time = toZonedTime(tid, timeZone);
-    const minutesSinceMidnight = time.getHours() * 60 + time.getMinutes();
-    return parseFloat(((minutesSinceMidnight / totalDayDurationMinutes) * 100).toFixed(1));
-  });
-
-  percentagesArray[3] += 5;
-  percentagesArray[5] -= 5;
-  percentagesArray.sort((a, b) => a - b);
-
-  const colors = ['#051937', '#8e3661', '#e48239', '#38BDF8', '#38BDF8', '#38BDF8','#d47e97', '#6c4771', '#051937'];
-  const gradientStops = colors.map((color, index) => {
-    const percentage = percentagesArray[index];
-
-    return `${color} ${percentage}%`;
-  });
-
-
- return `linear-gradient(to bottom, ${gradientStops.join(', ')})`;
+const DEFAULT_COORDS = {
+  lat: 57.6529,
+  lng: 11.9106
 };
 
 export default async function handler(req, res) {
-  const { query } = req;
-  const { type } = query; // Expecting 'gradient' or 'data'
+  try {
+    const { lat, lng } = req.query;
+    const coordinates = {
+      lat: parseFloat(lat) || DEFAULT_COORDS.lat,
+      lng: parseFloat(lng) || DEFAULT_COORDS.lng
+    };
 
-  // Fetch and cache sunrise-sunset data if not cached
-  let cachedData = cache.get(cacheKey);
+    const cacheKey = `${CACHE_KEY_PREFIX}${coordinates.lat},${coordinates.lng}`;
+    let cachedData = cache.get(cacheKey);
+    
+    if (!cachedData) {
+      const apiUrl = `https://api.sunrise-sunset.org/json?lat=${coordinates.lat}&lng=${coordinates.lng}&formatted=0`;
+      const response = await fetch(apiUrl);
 
-  if (!cachedData) {
-    try {
-      const apiEndpoint = 'https://api.sunrise-sunset.org/json?lat=57.6529&lng=11.9106&formatted=0&tzid=CET';
-      const response = await fetch(apiEndpoint);
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch data: ${response.statusText}`);
-      }
+      if (!response.ok) throw new Error(`API responded with ${response.status}`);
 
       const data = await response.json();
-
-      if (!data.results) {
-        throw new Error('Invalid data structure from API');
+      
+      if (data.status !== "OK" || !data.results) {
+        throw new Error('Invalid API response structure');
       }
 
-      cachedData = data.results;
-      cache.put(cacheKey, cachedData, cacheExpiry);
-    } catch (error) {
-      console.error('Error fetching sunrise-sunset data:', error);
-      return res.status(500).json({ error: 'Failed to fetch sunrise-sunset data' });
-    }
-  }
-
-  // Handle different query types
-  if (type === 'gradient') {
-    let cachedGradient = cache.get(gradientCacheKey);
- 
-
-    if (!cachedGradient) {
-      const gradient = generateBackgroundGradient(cachedData);
-      cache.put(gradientCacheKey, gradient, cacheExpiry);
-      cachedGradient = gradient;
+      cachedData = {
+        ...data.results,
+        coordinates, 
+        retrievedAt: new Date().toISOString()
+      };
+      cache.put(cacheKey, cachedData, CACHE_EXPIRY);
     }
 
-    return res.status(200).json({ gradient: cachedGradient });
-  }
+    res.status(200).json({
+      status: 'OK',
+      data: cachedData,
+    });
 
-  // Default response with sunrise-sunset data
-  return res.status(200).json(cachedData);
+  } catch (error) {
+    console.error('Sunrise-sunset API error:', error);
+
+    const staleData = cache.get(cacheKey);
+    if (staleData) {
+      return res.status(200).json({
+        status: 'STALE',
+        data: staleData,
+        warning: 'Using cached data due to API error',
+        error: error.message
+      });
+    }
+
+    res.status(500).json({
+      status: 'ERROR',
+      error: error.message,
+      details: 'Failed to fetch sunrise-sunset data'
+    });
+  }
 }

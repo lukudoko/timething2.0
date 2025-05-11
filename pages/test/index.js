@@ -1,5 +1,6 @@
+'use client';
 import React, { useState, useEffect } from "react";
-import Background from "@/components/skytest";
+import Background from "@/components/bg";
 import Time from "@/components/time";
 
 export default function Home() {

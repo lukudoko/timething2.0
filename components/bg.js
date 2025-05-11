@@ -1,11 +1,10 @@
 import React, { useEffect, useState, useRef, useMemo, useCallback } from "react";
 import chroma from "chroma-js";
-import { toZonedTime } from 'date-fns-tz';
+import { toZonedTime, getTimezoneOffset } from 'date-fns-tz';
 import { motion } from "framer-motion";
-import WeatherCanvas from "@/components/weather"; // Import WeatherCanvas
+import WeatherCanvas from "@/components/weather"; 
 
 const STARS_COUNT = 350;
-const TIME_ZONE = 'Europe/Stockholm';
 const ANIMATION_INTERVAL = 5000;
 
 const Background = ({ backgroundReady, setBackgroundReady }) => {
@@ -14,41 +13,135 @@ const Background = ({ backgroundReady, setBackgroundReady }) => {
     const [percentageWidth, setPercentageWidth] = useState(0);
     const [starsOpacity, setStarsOpacity] = useState(1);
     const [isReady, setIsReady] = useState(false);
-
     const backgroundCanvasRef = useRef(null);
     const starsCanvasRef = useRef(null);
     const animationFrameRef = useRef(null);
     const starsArrayRef = useRef([]);
 
-    // Memoize time conversion function
+    const getLocalTimezone = () => {
+        try {
+            return Intl.DateTimeFormat().resolvedOptions().timeZone;
+        } catch {
+            console.warn("Couldn't detect timezone, falling back to UTC");
+            return 'UTC';
+        }
+    };
+
     const convertTimeToPercentage = useCallback((timeStr) => {
-        const tid = new Date(timeStr);
-        const time = toZonedTime(tid, TIME_ZONE);
-        const minutesSinceMidnight = time.getHours() * 60 + time.getMinutes();
-        return parseFloat(((minutesSinceMidnight / 1440) * 100).toFixed(1));
+        if (!timeStr) return 0;
+        const timeZone = getLocalTimezone();
+
+        try {
+            const utcDate = new Date(timeStr);
+            const localDate = toZonedTime(utcDate, timeZone);
+            const minutesSinceMidnight = localDate.getHours() * 60 + localDate.getMinutes();
+            const percentage = parseFloat(((minutesSinceMidnight / 1440) * 100).toFixed(1));
+            return percentage;
+        } catch (error) {
+            console.error('Time conversion error:', error);
+            return 0;
+        }
     }, []);
 
-    // Fetch sun data
+    const getAdjustedTwilightTime = (
+        primaryTime,
+        fallbackTime,
+        secondaryFallbackTime,
+        minPercentage = 0,
+        maxPercentage = 100,
+        offset = 3,
+        isEndTime = false
+    ) => {
+        const primaryPerc = primaryTime && !primaryTime.startsWith("1970")
+            ? convertTimeToPercentage(primaryTime)
+            : null;
+
+        const fallbackPerc = fallbackTime && !fallbackTime.startsWith("1970")
+            ? convertTimeToPercentage(fallbackTime)
+            : null;
+
+        const secondaryPerc = secondaryFallbackTime
+            ? convertTimeToPercentage(secondaryFallbackTime)
+            : null;
+
+        const direction = isEndTime ? 1 : -1;
+
+        if (primaryPerc !== null) return primaryPerc;
+
+        if (fallbackPerc !== null) {
+            return Math.min(maxPercentage, Math.max(minPercentage,
+                fallbackPerc + (direction * offset)));
+        }
+
+        if (secondaryPerc !== null) {
+            return Math.min(maxPercentage, Math.max(minPercentage,
+                secondaryPerc + (direction * offset * 2)));
+        }
+
+        return isEndTime ? maxPercentage : minPercentage;
+    };
+
     useEffect(() => {
         const fetchTimes = async () => {
             try {
-                const res = await fetch('/api/bg');
-                const sunData = await res.json();
+
+                const savedSettings = JSON.parse(localStorage.getItem('appSettings') || '{}');
+
+                let apiUrl = '/api/bg';
+                if (savedSettings.latitude && savedSettings.longitude) {
+                    apiUrl += `?lat=${savedSettings.latitude}&lng=${savedSettings.longitude}`;
+                }
+
+                const res = await fetch(apiUrl);
+                const times = await res.json();
+                const sunData = times.data;
 
                 const perc = [
                     { time: 0, gradient: { color1: "#051937", color2: "#1F2240" } },
-                    { time: convertTimeToPercentage(sunData.astronomical_twilight_begin), gradient: { color1: "#051937", color2: "#1F2240" } },
-                    { time: convertTimeToPercentage(sunData.nautical_twilight_begin), gradient: { color1: "#051937", color2: "#8E3661" } },
-                    { time: convertTimeToPercentage(sunData.civil_twilight_begin), gradient: { color1: "#ad405d", color2: "#E48239" } },
-                    { time: convertTimeToPercentage(sunData.sunrise), gradient: { color1: "#71D1FA", color2: "#9c7cc9" } },
+                    {
+                        time: getAdjustedTwilightTime(
+                            sunData.astronomical_twilight_begin,
+                            sunData.nautical_twilight_begin,
+                            sunData.civil_twilight_begin,
+                            1, 100, 3,
+                        ),
+                        gradient: { color1: "#051937", color2: "#1F2240" }
+                    },
+                    {
+                        time: getAdjustedTwilightTime(
+                            sunData.nautical_twilight_begin,
+                            sunData.civil_twilight_begin,
+                            sunData.sunrise
+                        ),
+                        gradient: { color1: "#051937", color2: "#915C89" }
+                    },
+                    { time: convertTimeToPercentage(sunData.civil_twilight_begin), gradient: { color1: "#322441", color2: "#E48239" } },
+                    { time: convertTimeToPercentage(sunData.sunrise), gradient: { color1: "#71D1FA", color2: "#CD8066" } },
                     { time: convertTimeToPercentage(sunData.solar_noon), gradient: { color1: "#38bdf8", color2: "#52caff" } },
-                    { time: convertTimeToPercentage(sunData.sunset), gradient: { color1: "#80ACF4", color2: "#CB88BD" } },
-                    { time: convertTimeToPercentage(sunData.civil_twilight_end), gradient: { color1: "#6C4771", color2: "#D47E97" } },
-                    { time: convertTimeToPercentage(sunData.nautical_twilight_end), gradient: { color1: "#051937", color2: "#8E3661" } },
-                    { time: convertTimeToPercentage(sunData.astronomical_twilight_end), gradient: { color1: "#051937", color2: "#1F2240" } },
+                    { time: convertTimeToPercentage(sunData.sunset), gradient: { color1: "#80ACF4", color2: "#DC6F68" } },
+                    { time: convertTimeToPercentage(sunData.civil_twilight_end), gradient: { color1: "#483447", color2: "#4E5682" } },
+                    {
+                        time: getAdjustedTwilightTime(
+                            sunData.nautical_twilight_end,
+                            sunData.civil_twilight_end,
+                            sunData.sunset,
+                            0, 99.5, 3, true
+                        ),
+                        gradient: { color1: "#051937", color2: "#50486D" }
+                    },
+                    {
+                        time: getAdjustedTwilightTime(
+                            sunData.astronomical_twilight_end,
+                            sunData.nautical_twilight_end,
+                            sunData.civil_twilight_end,
+                            0, 100, 3, true
+                        ),
+                        gradient: { color1: "#051937", color2: "#1F2240" }
+                    },
                 ];
 
                 setTimeIndices(perc);
+                console.log(perc)
             } catch (error) {
                 console.error('Failed to fetch sun data:', error);
             }
@@ -57,12 +150,10 @@ const Background = ({ backgroundReady, setBackgroundReady }) => {
         fetchTimes();
     }, [convertTimeToPercentage]);
 
-    // Memoize color lerp function
     const lerpColor = useMemo(() => (color1, color2, t) => {
         return chroma.mix(color1, color2, t).hex();
     }, []);
 
-    // Stars generation function
     const generateStars = useCallback((canvas) => {
         const stars = [];
         for (let i = 0; i < STARS_COUNT; i++) {
@@ -76,7 +167,6 @@ const Background = ({ backgroundReady, setBackgroundReady }) => {
         return stars;
     }, []);
 
-    // Drawing functions
     const drawStars = useCallback((ctx, stars, width, height) => {
         ctx.clearRect(0, 0, width, height);
         stars.forEach(star => {
@@ -109,7 +199,7 @@ const Background = ({ backgroundReady, setBackgroundReady }) => {
         backgroundCtx.fillStyle = gradient;
         backgroundCtx.fillRect(0, 0, width, height);
 
-        if (timeFraction <= timeIndices[3].time / 100 || timeFraction >= timeIndices[7].time / 100) {
+        if (timeFraction <= timeIndices[4].time / 100 || timeFraction >= timeIndices[6].time / 100) {
             drawStars(starsCtx, starsArrayRef.current, width, height);
         }
 
@@ -117,14 +207,13 @@ const Background = ({ backgroundReady, setBackgroundReady }) => {
         setBackgroundReady(true);
     }, [timeIndices, lerpColor, drawStars]);
 
-    // Calculate stars opacity
     const calculateStarsOpacity = useCallback((timeFraction) => {
         if (timeIndices.length < 9) return;
 
-        const fadeInStart = timeIndices[7].time / 100;
+        const fadeInStart = timeIndices[6].time / 100;
         const fadeInEnd = timeIndices[9].time / 100;
         const fadeOutStart = timeIndices[1].time / 100;
-        const fadeOutEnd = timeIndices[3].time / 100;
+        const fadeOutEnd = timeIndices[4].time / 100;
 
         let opacity = 0;
 
@@ -151,7 +240,6 @@ const Background = ({ backgroundReady, setBackgroundReady }) => {
             const now = new Date();
             const currentTime = now.getHours() * 60 + now.getMinutes();
             const timeFraction = (currentTime / 1440).toFixed(4);
-        
 
             drawSky(
                 backgroundCtx,
@@ -164,8 +252,8 @@ const Background = ({ backgroundReady, setBackgroundReady }) => {
 
             setTimeout(() => {
                 setPercentageWidth(timeFraction * 100);
-              }, 1000);
-            
+            }, 1000);
+
         };
 
         const handleResize = () => {
@@ -175,20 +263,17 @@ const Background = ({ backgroundReady, setBackgroundReady }) => {
             starsCanvas.width = innerWidth;
             starsCanvas.height = innerHeight;
             starsArrayRef.current = generateStars(starsCanvas);
-            updateAnimation(); // Immediate update after resize
+            updateAnimation(); 
         };
 
-        // Initial setup
         handleResize();
 
-        // Debounced resize handler
         let resizeTimeout;
         const debouncedResize = () => {
             clearTimeout(resizeTimeout);
-            resizeTimeout = setTimeout(handleResize, 100); // Small delay to prevent rapid successive updates
+            resizeTimeout = setTimeout(handleResize, 100); 
         };
 
-        // Set up interval for subsequent updates
         const intervalId = setInterval(updateAnimation, ANIMATION_INTERVAL);
         window.addEventListener("resize", debouncedResize);
 
@@ -198,7 +283,6 @@ const Background = ({ backgroundReady, setBackgroundReady }) => {
             window.removeEventListener("resize", debouncedResize);
         };
     }, [drawSky, calculateStarsOpacity, generateStars]);
-
 
     return (
         <>

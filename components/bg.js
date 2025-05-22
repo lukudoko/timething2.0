@@ -141,7 +141,6 @@ const Background = ({ backgroundReady, setBackgroundReady }) => {
                 ];
 
                 setTimeIndices(perc);
-                console.log(perc)
             } catch (error) {
                 console.error('Failed to fetch sun data:', error);
             }
@@ -210,10 +209,10 @@ const Background = ({ backgroundReady, setBackgroundReady }) => {
     const calculateStarsOpacity = useCallback((timeFraction) => {
         if (timeIndices.length < 9) return;
 
-        const fadeInStart = timeIndices[6].time / 100;
+        const fadeInStart = timeIndices[7].time / 100;
         const fadeInEnd = timeIndices[9].time / 100;
         const fadeOutStart = timeIndices[1].time / 100;
-        const fadeOutEnd = timeIndices[4].time / 100;
+        const fadeOutEnd = timeIndices[3].time / 100;
 
         let opacity = 0;
 

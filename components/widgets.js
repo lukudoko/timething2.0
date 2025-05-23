@@ -23,58 +23,53 @@ const AppTray = () => {
   }, []);
 
   const addWidget = useCallback((id, content, dataSignature = null) => {
-    if (isCooldown) return;
+  if (isCooldown) return;
 
-    const existingWidget = widgetsRef.current.find(widget => widget.id === id);
-    const hasDataChanged = dataSignature && widgetDataRef.current[id] !== dataSignature;
+  const prevSignature = widgetDataRef.current[id];
 
-    // If data hasn't changed and the widget exists, do nothing
-    if (dataSignature && widgetDataRef.current[id] === dataSignature && existingWidget) {
-      return;
-    }
+  // 1. If signature hasn't changed, do nothing
+  if (dataSignature && prevSignature === dataSignature) {
+    return;
+  }
 
-    setIsCooldown(true);
-    const newWidget = { id: id || Date.now(), content };
+  // 2. Save the new signature
+  if (dataSignature) {
+    widgetDataRef.current[id] = dataSignature;
+  }
 
-    const handleAddition = () => {
-      setWidgets(prevWidgets => {
-        const currentWidgets = widgetsRef.current;
-        let updatedWidgets = [...currentWidgets];
-        const existingIndex = currentWidgets.findIndex(widget => widget.id === id);
+  setIsCooldown(true);
+  const newWidget = { id, content };
 
-        if (updatedWidgets.length >= MAX_WIDGETS && existingIndex === -1) {
-          updatedWidgets = updatedWidgets.slice(1);
-        }
+  const handleAddition = () => {
+    setWidgets(prevWidgets => {
+      const currentWidgets = widgetsRef.current;
+      let updatedWidgets = [...currentWidgets];
 
-        if (existingIndex !== -1) {
-          updatedWidgets[existingIndex] = newWidget; // Replace existing
-        } else {
-          updatedWidgets = [...updatedWidgets, newWidget]; // Add new
-        }
+      if (updatedWidgets.length >= MAX_WIDGETS) {
+        updatedWidgets = updatedWidgets.slice(1);
+        setTimeout(() => {
+          setWidgets(current => [...current, newWidget]);
+        }, 1000);
         return updatedWidgets;
-      });
-      setTimeout(() => setIsCooldown(false), 500);
-    };
+      }
 
-    if (existingWidget && hasDataChanged) {
-      // Remove the old widget and then add the new one with a delay for animation
-      removeWidget(id);
-      setTimeout(handleAddition, 1000);
-      // Update data signature immediately after initiating the change
-      if (dataSignature) {
-        widgetDataRef.current[id] = dataSignature;
-      }
-    } else if (!existingWidget) {
-      // Add the widget if it doesn't exist
-      handleAddition();
-      if (dataSignature) {
-        widgetDataRef.current[id] = dataSignature;
-      }
-    } else {
-      // Data hasn't changed and the widget exists, so do nothing
-      setIsCooldown(false); // Release the cooldown
-    }
-  }, [isCooldown, removeWidget]);
+      return [...updatedWidgets, newWidget];
+    });
+
+    setTimeout(() => setIsCooldown(false), 500);
+  };
+
+  const existingWidget = widgetsRef.current.find(widget => widget.id === id);
+
+  // 3. If widget exists AND data has changed → remove and re-add
+  if (existingWidget) {
+    removeWidget(id);
+    setTimeout(handleAddition, 1000); // wait for exit animation
+  } else {
+    handleAddition();
+  }
+}, [isCooldown, removeWidget]);
+
 
   // Widget Registry System - makes adding new widgets super easy
   const widgetHandlers = useRef({});

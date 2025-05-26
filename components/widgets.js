@@ -15,77 +15,76 @@ const AppTray = () => {
     widgetsRef.current = widgets;
   }, [widgets]);
 
-  // Core widget management - keeping your working logic
-  const removeWidget = useCallback((id) => {
+  // Core widget management
+  const removeWidget = useCallback((id, keepSignature = false) => {
     setWidgets(prevWidgets => prevWidgets.filter(widget => widget.id !== id));
-    // Clean up data reference when widget is removed
-    delete widgetDataRef.current[id];
+    // Only clean up data reference if we're not replacing the widget
+    if (!keepSignature) {
+      delete widgetDataRef.current[id];
+    }
   }, []);
 
   const addWidget = useCallback((id, content, dataSignature = null) => {
-  if (isCooldown) return;
+    if (isCooldown) return;
 
-  const prevSignature = widgetDataRef.current[id];
+    const prevSignature = widgetDataRef.current[id];
 
-  // 1. If signature hasn't changed, do nothing
-  if (dataSignature && prevSignature === dataSignature) {
-    return;
-  }
+    // If signature exists and hasn't changed, do nothing
+    if (dataSignature && prevSignature === dataSignature) {
+      console.log(`Widget ${id} signature unchanged: ${dataSignature}`);
+      return;
+    }
 
-  // 2. Save the new signature
-  if (dataSignature) {
-    widgetDataRef.current[id] = dataSignature;
-  }
+    // Update the signature BEFORE processing
+    if (dataSignature) {
+      widgetDataRef.current[id] = dataSignature;
+      console.log(`Widget ${id} signature updated: ${prevSignature} -> ${dataSignature}`);
+    }
 
-  setIsCooldown(true);
-  const newWidget = { id, content };
+    setIsCooldown(true);
+    const newWidget = { id, content };
 
-  const handleAddition = () => {
-    setWidgets(prevWidgets => {
-      const currentWidgets = widgetsRef.current;
-      let updatedWidgets = [...currentWidgets];
+    const handleAddition = () => {
+      setWidgets(prevWidgets => {
+        const currentWidgets = widgetsRef.current;
+        let updatedWidgets = [...currentWidgets];
 
-      if (updatedWidgets.length >= MAX_WIDGETS) {
-        updatedWidgets = updatedWidgets.slice(1);
-        setTimeout(() => {
-          setWidgets(current => [...current, newWidget]);
-        }, 1000);
-        return updatedWidgets;
-      }
+        if (updatedWidgets.length >= MAX_WIDGETS) {
+          updatedWidgets = updatedWidgets.slice(1);
+          setTimeout(() => {
+            setWidgets(current => [...current, newWidget]);
+          }, 1000);
+          return updatedWidgets;
+        }
 
-      return [...updatedWidgets, newWidget];
-    });
+        return [...updatedWidgets, newWidget];
+      });
 
-    setTimeout(() => setIsCooldown(false), 500);
-  };
+      setTimeout(() => setIsCooldown(false), 500);
+    };
 
-  const existingWidget = widgetsRef.current.find(widget => widget.id === id);
+    const existingWidget = widgetsRef.current.find(widget => widget.id === id);
 
-  // 3. If widget exists AND data has changed → remove and re-add
-  if (existingWidget) {
-    removeWidget(id);
-    setTimeout(handleAddition, 1000); // wait for exit animation
-  } else {
-    handleAddition();
-  }
-}, [isCooldown, removeWidget]);
+    if (existingWidget) {
+      removeWidget(id, true); // Keep signature when replacing
+      setTimeout(handleAddition, 1000);
+    } else {
+      handleAddition();
+    }
+  }, [isCooldown, removeWidget]);
 
-
-  // Widget Registry System - makes adding new widgets super easy
+  // Widget Registry System
   const widgetHandlers = useRef({});
 
-  // Register a widget type
   const registerWidget = useCallback((id, handler) => {
     widgetHandlers.current[id] = handler;
   }, []);
 
-  // Generic widget creation helper
   const createWidget = useCallback((id, content, options = {}) => {
     const { dataSignature, autoRemove, removeAfter = 15000 } = options;
 
     addWidget(id, content, dataSignature);
 
-    // Auto-remove functionality
     if (autoRemove) {
       setTimeout(() => removeWidget(id), removeAfter);
     }
@@ -123,9 +122,7 @@ const AppTray = () => {
     })
   };
 
-  // WIDGET DEFINITIONS - Easy to add new ones!
-
-  // Weather Widget
+  // Weather Widget - Fixed version
   useEffect(() => {
     registerWidget('weather', async () => {
       try {
@@ -138,15 +135,26 @@ const AppTray = () => {
         const temp = Math.round(main.temp);
         const iconUrl = `https://openweathermap.org/img/wn/${icon}@2x.png`;
 
+        // Create a more robust signature that includes the actual values we care about
+        const dataSignature = `${icon}-${temp}`;
+
+        console.log(`Weather data: icon=${icon}, temp=${temp}, signature=${dataSignature}`);
+
         const content = (
-          <>
-            <Image height="48" width="48" src={iconUrl} alt={`Weather: ${weather[0].description}`} />
-            <div className="text-lg font-semibold text-center">{temp}°C</div>
-          </>
+          <div className='flex flex-col items-center justify-center h-full'>
+            <Image
+              height="60"
+              width="60"
+              src={iconUrl}
+              alt={`Weather: ${weather[0].description}`}
+              className="-mt-2 -mb-1"
+            />
+            <div className="text-sm font-semibold text-center -mt-2">{temp}°C</div>
+          </div>
         );
 
         createWidget('weather', content, {
-          dataSignature: `${icon}-${temp}`
+          dataSignature
         });
       } catch (error) {
         console.error('Weather widget error:', error);
@@ -164,7 +172,7 @@ const AppTray = () => {
     };
   }, [registerWidget, createWidget]);
 
-  // Music Widget
+  // Music Widget - Keep your working logic
   useEffect(() => {
     registerWidget('music', () => {
       const client = mqtt.connect('ws://192.168.3.41:9001');
@@ -211,13 +219,13 @@ const AppTray = () => {
               <div className="flex relative h-full flex-row w-full justify-center items-center">
                 <Image
                   className=" rounded"
-                  height={48}
-                  width={48}
+                  height={52}
+                  width={52}
                   src={songData.artwork}
                   alt="Album artwork"
                 />
                 <div
-                  className="absolute saturate-200 blur-md -z-10 h-full w-full bg-cover bg-center"
+                  className="absolute saturate-200 blur-lg -z-10 h-full w-full bg-cover bg-center"
                   style={{ backgroundImage: `url(${songData.artwork})` }}
                 />
               </div>
@@ -245,8 +253,6 @@ const AppTray = () => {
     return cleanup;
   }, [registerWidget, createWidget, removeWidget]);
 
-
-
   // Easy widget trigger functions
   const triggerWidget = useCallback((widgetId) => {
     widgetHandlers.current[widgetId]?.();
@@ -258,7 +264,7 @@ const AppTray = () => {
   };
 
   return (
-    <div className="z-50 w-full h-16 flex justify-evenly">
+    <div className="z-50 w-full h-20 flex justify-evenly">
       <AnimatePresence mode="popLayout">
         {widgets.map((widget, index) => (
           <motion.div
@@ -268,7 +274,7 @@ const AppTray = () => {
             initial="initial"
             animate="animate"
             exit="exit"
-            className="flex font-fit overflow-hidden backdrop-blur-xl bg-white/40 text-neutral-800 rounded-[1.25rem] min-w-fit w-1/4 max-w-[11vw] h-full shadow-[0px_4px_6px_-4px_rgba(0,_0,_0,_0.3)] border border-white/20 justify-center items-center"
+            className="flex font-fit overflow-hidden backdrop-blur-xl bg-white/30 text-neutral-800 rounded-[1.25rem] min-w-fit w-1/4 max-w-[11vw] h-full shadow-[0px_4px_6px_-4px_rgba(0,_0,_0,_0.3)] border border-white/20 justify-center items-center"
             layout
             layoutId={widget.id}
           >
@@ -276,8 +282,6 @@ const AppTray = () => {
           </motion.div>
         ))}
       </AnimatePresence>
-
-
     </div>
   );
 };

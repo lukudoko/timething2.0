@@ -60,7 +60,7 @@ function Time() {
     return () => clearInterval(interval);
   }, [hasTimeLoaded]);
 
-  const timeSegmentClass = "flex items-center justify-center font-bold text-[25vw] bg-gradient-to-b from-slate-50 to-zinc-50 text-transparent bg-clip-text leading-[1.1]";
+  const timeSegmentClass = "flex items-center justify-center font-bold text-[27.5vw] bg-gradient-to-b from-slate-50 to-zinc-50 text-transparent bg-clip-text leading-[1.1]";
 
   if (!hasTimeLoaded) return null;
 

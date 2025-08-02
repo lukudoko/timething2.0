@@ -1,6 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: false,
+  output: 'standalone', // Essential for smaller Docker images
   images: {
     remotePatterns: [
       {
@@ -10,5 +11,4 @@ const nextConfig = {
     ],
   },
 };
-
 export default nextConfig;

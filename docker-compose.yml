@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  timething:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: timething
+    ports:
+      - "3005:4000"
+    restart: unless-stopped
+    # Optional: if you need persistent data
+    # volumes:
+    #   - ./data:/app/data

@@ -175,7 +175,7 @@ const AppTray = () => {
   // Music Widget - Keep your working logic
   useEffect(() => {
     registerWidget('music', () => {
-      const client = mqtt.connect('ws://192.168.3.41:9001');
+      const client = mqtt.connect('wss://time.hlaben.duckdns.org/mqtt');
       let debounceTimeout;
       let inactivityTimeout;
 

@@ -1,0 +1,59 @@
+{
+  "location": {
+    "latitude": "",
+    "longitude": ""
+  },
+  "widgets": {
+    "music": {
+      "enabled": true,
+      "timeSlots": []
+    },
+    "weather": {
+      "enabled": true,
+      "timeSlots": []
+    },
+    "uv": {
+      "enabled": true,
+      "timeSlots": [
+        "afternoon",
+        "morning"
+      ]
+    },
+    "precipitation": {
+      "enabled": true,
+      "timeSlots": [
+        "morning",
+        "afternoon",
+        "evening"
+      ]
+    },
+    "date": {
+      "enabled": true,
+      "timeSlots": []
+    },
+    "yearProgress": {
+      "enabled": true,
+      "timeSlots": []
+    },
+    "commuter": {
+      "enabled": true,
+      "timeSlots": [
+        "morning",
+        "evening"
+      ]
+    },
+    "year": {
+      "enabled": true,
+      "timeSlots": [
+        "evening",
+        "night"
+      ]
+    },
+    "rain": {
+      "timeSlots": [
+        "morning",
+        "afternoon"
+      ]
+    }
+  }
+}

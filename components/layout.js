@@ -1,5 +1,6 @@
 import { Noto_Sans_JP, Outfit, Lexend } from 'next/font/google';
 import Head from 'next/head';
+import DayNightTheme from '@/components/DayNight';
 
 const noto = Noto_Sans_JP({
   weight: "variable",
@@ -17,7 +18,6 @@ const fit = Outfit({
   adjustFontFallback: false,
 });
 
-
 export default function Layout({ children }) {
   return (
     <div className={`${noto.variable} ${fit.variable}`}>
@@ -25,6 +25,7 @@ export default function Layout({ children }) {
         <title>timething</title>
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
       </Head>
+      <DayNightTheme />
       <main className='font-fit'>{children}</main>
     </div>
   );

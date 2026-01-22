@@ -65,7 +65,7 @@ function Time() {
   if (!hasTimeLoaded) return null;
 
   return (
-    <div className="z-50 font-fit flex relative w-fit justify-center items-center h-fit">
+    <div className="z-50 font-fit flex justify-center items-center h-fit">
 
       <AnimatePresence mode="wait">
         <motion.div

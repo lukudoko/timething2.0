@@ -3,10 +3,12 @@
   "version": "2.0",
   "private": true,
   "scripts": {
+    "generate-widgets": "node scripts/generate-registry.js",
     "dev": "next dev",
     "build": "next build",
     "start": "next start -p 4000",
-    "lint": "next lint"
+    "lint": "next lint",
+    "postinstall": "npm run generate-widgets"
   },
   "dependencies": {
     "chroma-js": "^2.6.0",
@@ -17,7 +19,8 @@
     "mqtt": "^5.10.2",
     "next": "^14.2.15",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "react-icons": "^5.5.0"
   },
   "devDependencies": {
     "daisyui": "^4.12.13",

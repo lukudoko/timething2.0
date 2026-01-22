@@ -1,30 +1,109 @@
-// pages/api/weather.js
 import cache from 'memory-cache';
 
 const cacheKey = 'weatherCache';
-const cacheExpiry = 15 * 60 * 1000; // 15 minutes in milliseconds
+const cacheExpiry = 15 * 60 * 1000;
 
 export default async function handler(req, res) {
-  const { lat = 57.65, lon = 11.916 } = req.query; // Default coordinates
-  const API_KEY = process.env.WEATHER_API_KEY || '7be8a9d34955926d889f6ce6d3ea87fb';
+  const { lat = 57.65, lon = 11.916 } = req.query;
 
-  // Check if data is cached
   let cachedWeather = cache.get(cacheKey);
 
   if (!cachedWeather) {
     try {
-      const apiEndpoint = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${API_KEY}&units=metric`;
-      const response = await fetch(apiEndpoint);
 
-      if (!response.ok) {
-        throw new Error(`Failed to fetch weather data: ${response.statusText}`);
+      const openMeteoResponse = await fetch(
+        `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&minutely_15=is_day&timezone=auto&forecast_days=1&forecast_minutely_15=1&&hourly=precipitation_probability,weather_code,is_day,temperature_2m,uv_index&forecast_days=1&forecast_hours=6`
+      );
+
+      if (!openMeteoResponse.ok) {
+        throw new Error(`OpenMeteo API error: ${openMeteoResponse.statusText}`);
       }
 
-      const data = await response.json();
+      const openMeteoData = await openMeteoResponse.json();
 
-      // Cache the weather data
-      cache.put(cacheKey, data, cacheExpiry);
-      cachedWeather = data;
+      const hourlyData = openMeteoData.hourly;
+      const minsData = openMeteoData.minutely_15;
+
+      const weatherCodeToIcon = (code, isDay) => {
+        const dayNight = isDay ? 'd' : 'n';
+        const codeMap = {
+          0: '01',
+          1: '01',
+          2: '02',
+          3: '03',
+          45: '50',
+          48: '50',
+          51: '09',
+          53: '09',
+          55: '09',
+          56: '13',
+          57: '13',
+          61: '10',
+          63: '10',
+          65: '10',
+          66: '13',
+          67: '13',
+          71: '13',
+          73: '13',
+          75: '13',
+          77: '13',
+          80: '09',
+          81: '09',
+          82: '10',
+          85: '13',
+          86: '13',
+          95: '11',
+          96: '11',
+          99: '11'
+        };
+
+        const iconCode = codeMap[code] || '03';
+
+        return `${iconCode}${dayNight}`;
+      };
+
+      const hourlyForecast = hourlyData.time.map((time, index) => ({
+        time,
+        temperature: hourlyData.temperature_2m[index],
+        uvIndex: hourlyData.uv_index[index],
+        precipitationProbability: hourlyData.precipitation_probability[index],
+        weatherCode: hourlyData.weather_code[index],
+        isDay: minsData.is_day[index] === 1,
+        icon: weatherCodeToIcon(hourlyData.weather_code[index], hourlyData.is_day[index] === 1)
+      }));
+
+      const now = new Date();
+      const currentConditions = hourlyForecast.find(h => {
+        const forecastTime = new Date(h.time);
+        return forecastTime.getHours() === now.getHours();
+      }) || hourlyForecast[0];
+
+
+      const maxUvIndex = Math.max(...hourlyData.uv_index);
+      const hasHighRainProbability = hourlyData.precipitation_probability.some(prob => prob > 20);
+
+      const combinedData = {
+
+        current: {
+          temp: currentConditions.temperature,
+          weather: {
+            icon: currentConditions.icon,
+            description: `Weather code: ${currentConditions.weatherCode}`
+          }
+        },
+
+        hourly: hourlyForecast,
+        isDay: currentConditions.isDay,
+        maxUvIndexToday: maxUvIndex,
+        hasRainAlert: hasHighRainProbability,
+        currentUvIndex: currentConditions.uvIndex,
+
+        lastUpdated: new Date().toISOString(),
+        location: { lat, lon }
+      };
+
+      cache.put(cacheKey, combinedData, cacheExpiry);
+      cachedWeather = combinedData;
     } catch (error) {
       console.error('Error fetching weather data:', error);
       return res.status(500).json({ error: 'Failed to fetch weather data' });

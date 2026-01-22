@@ -8,7 +8,6 @@ const STARS_COUNT = 350;
 const ANIMATION_INTERVAL = 5000;
 
 const Background = ({ backgroundReady, setBackgroundReady }) => {
-
     const [timeIndices, setTimeIndices] = useState([]);
     const [percentageWidth, setPercentageWidth] = useState(0);
     const [starsOpacity, setStarsOpacity] = useState(1);
@@ -85,14 +84,17 @@ const Background = ({ backgroundReady, setBackgroundReady }) => {
         const fetchTimes = async () => {
             try {
 
-                const savedSettings = JSON.parse(localStorage.getItem('appSettings') || '{}');
+                const response = await fetch('/api/config');
+                let config = {};
 
-                let apiUrl = '/api/bg';
-                if (savedSettings.latitude && savedSettings.longitude) {
-                    apiUrl += `?lat=${savedSettings.latitude}&lng=${savedSettings.longitude}`;
+                if (response.ok) {
+                    config = await response.json();
                 }
 
-                const res = await fetch(apiUrl);
+                const latitude = config.location?.latitude || 57.65;
+                const longitude = config.location?.longitude || 11.916;
+
+                const res = await fetch(`/api/bg?lat=${latitude}&lng=${longitude}`);
                 const times = await res.json();
                 const sunData = times.data;
 
@@ -143,6 +145,60 @@ const Background = ({ backgroundReady, setBackgroundReady }) => {
                 setTimeIndices(perc);
             } catch (error) {
                 console.error('Failed to fetch sun data:', error);
+
+                try {
+                    const res = await fetch(`/api/bg?lat=57.65&lng=11.916`);
+                    const times = await res.json();
+                    const sunData = times.data;
+
+                    const perc = [
+                        { time: 0, gradient: { color1: "#051937", color2: "#1F2240" } },
+                        {
+                            time: getAdjustedTwilightTime(
+                                sunData.astronomical_twilight_begin,
+                                sunData.nautical_twilight_begin,
+                                sunData.civil_twilight_begin,
+                                1, 100, 3,
+                            ),
+                            gradient: { color1: "#051937", color2: "#1F2240" }
+                        },
+                        {
+                            time: getAdjustedTwilightTime(
+                                sunData.nautical_twilight_begin,
+                                sunData.civil_twilight_begin,
+                                sunData.sunrise
+                            ),
+                            gradient: { color1: "#051937", color2: "#915C89" }
+                        },
+                        { time: convertTimeToPercentage(sunData.civil_twilight_begin), gradient: { color1: "#322441", color2: "#E48239" } },
+                        { time: convertTimeToPercentage(sunData.sunrise), gradient: { color1: "#71D1FA", color2: "#CD8066" } },
+                        { time: convertTimeToPercentage(sunData.solar_noon), gradient: { color1: "#38bdf8", color2: "#52caff" } },
+                        { time: convertTimeToPercentage(sunData.sunset), gradient: { color1: "#80ACF4", color2: "#DC6F68" } },
+                        { time: convertTimeToPercentage(sunData.civil_twilight_end), gradient: { color1: "#483447", color2: "#4E5682" } },
+                        {
+                            time: getAdjustedTwilightTime(
+                                sunData.nautical_twilight_end,
+                                sunData.civil_twilight_end,
+                                sunData.sunset,
+                                0, 99.5, 3, true
+                            ),
+                            gradient: { color1: "#051937", color2: "#50486D" }
+                        },
+                        {
+                            time: getAdjustedTwilightTime(
+                                sunData.astronomical_twilight_end,
+                                sunData.nautical_twilight_end,
+                                sunData.civil_twilight_end,
+                                0, 100, 3, true
+                            ),
+                            gradient: { color1: "#051937", color2: "#1F2240" }
+                        },
+                    ];
+
+                    setTimeIndices(perc);
+                } catch (fallbackError) {
+                    console.error('Failed to fetch with default coordinates:', fallbackError);
+                }
             }
         };
 
@@ -292,11 +348,11 @@ const Background = ({ backgroundReady, setBackgroundReady }) => {
             >
                 <canvas
                     ref={backgroundCanvasRef}
-                    className="fixed h-dvh w-full inset-0 z-0"
+                    className="fixed h-dvh w-full inset-0 "
                 />
                 <canvas
                     ref={starsCanvasRef}
-                    className="fixed h-dvh w-full inset-0 z-10"
+                    className="fixed h-dvh w-full inset-0 "
                     style={{ opacity: starsOpacity }}
                 />
             </motion.div>

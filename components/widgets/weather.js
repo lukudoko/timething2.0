@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react';
+import Image from 'next/image';
 
 const WeatherWidget = ({ isActive, onWidgetUpdate, widgetKey }) => {
   const intervalRef = useRef(null);
@@ -20,15 +21,15 @@ const WeatherWidget = ({ isActive, onWidgetUpdate, widgetKey }) => {
       if (dataSignature !== lastSignatureRef.current) {
         lastSignatureRef.current = dataSignature;
         const content = (
-          <div className='flex dark:text-white flex-col items-center justify-center h-full'>
-            <img
+          <div className='flex dark:text-white gap-2 items-center justify-center h-full'>
+            <Image
               height="56"
               width="56"
               src={iconUrl}
-              //alt={`Weather: ${current.weather.description}`}
-              className="-my-2 "
+              alt={`Weather: ${current.weather.description}`}
+              className="-mx-2 "
             />
-            <div className="text-lg font-bold text-center -mt-2">{temp}°C</div>
+            <div className="text-xl font-bold text-center ">{temp}°C</div>
           </div>
         );
 

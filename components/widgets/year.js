@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
   startOfYear,
   endOfYear,
@@ -7,7 +7,6 @@ import {
 } from 'date-fns';
 
 const YearProgressWidget = ({ isActive, onWidgetUpdate, widgetKey }) => {
-  const [progress, setProgress] = useState(0);
   const lastRef = useRef(null);
 
   const getProgress = () => {
@@ -28,43 +27,38 @@ const YearProgressWidget = ({ isActive, onWidgetUpdate, widgetKey }) => {
     const update = () => {
       const value = getProgress();
       if (value === lastRef.current) return;
-
       lastRef.current = value;
-      setProgress(value);
 
       const content = (
-        <div className="flex items-center  dark:text-white justify-center w-full h-full">
-          <div className="relative w-14 h-14">
+        <div className="flex items-center justify-center w-full h-full">
+          <div className="relative h-full aspect-square">
             <svg viewBox="0 0 100 100" className="w-full h-full">
-
               <circle
                 cx="50"
                 cy="50"
                 r="42"
                 fill="none"
-                stroke="rgba(255,255,255,0.1)"
-                strokeWidth="8"
+                strokeWidth="10"
+                className="stroke-black/10 dark:stroke-white/10"
               />
               <circle
                 cx="50"
                 cy="50"
                 r="42"
                 fill="none"
-                stroke="white"
-                strokeWidth="8"
+                strokeWidth="10"
                 strokeLinecap="round"
                 strokeDasharray="264"
                 strokeDashoffset={264 - (264 * value) / 100}
                 transform="rotate(-90 50 50)"
-                className="transition-all duration-1000 ease-out"
+                className="stroke-black dark:stroke-white transition-all duration-1000 ease-out"
               />
             </svg>
-
             <div className="absolute inset-0 flex flex-col items-center justify-center leading-none">
-              <span className="text-sm font-bold tabular-nums">
+              <span className="text-base font-bold tabular-nums text-black dark:text-white">
                 {value}%
               </span>
-              <span className="text-[0.5rem] opacity-40 tracking-widest mt-0.5">
+              <span className="text-[0.5rem] font-semibold tracking-widest mt-0.5 text-black/60 dark:text-white/60">
                 {getYear(new Date())}
               </span>
             </div>
@@ -76,7 +70,7 @@ const YearProgressWidget = ({ isActive, onWidgetUpdate, widgetKey }) => {
     };
 
     update();
-    const interval = setInterval(update, 60 * 60 * 1000); // hourly
+    const interval = setInterval(update, 60 * 60 * 1000);
     return () => clearInterval(interval);
   }, [isActive, onWidgetUpdate, widgetKey]);
 

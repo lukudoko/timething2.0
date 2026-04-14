@@ -1,4 +1,3 @@
-// utils/scheduler.js
 export class WidgetScheduler {
   constructor(config) {
     this.config = config;
@@ -14,14 +13,15 @@ export class WidgetScheduler {
     const hour = new Date().getHours();
     for (const [slot, { start, end }] of Object.entries(this.timeSlots)) {
       if (start <= end) {
-        // Same-day range (morning, noon, afternoon, evening)
+
         if (hour >= start && hour < end) return slot;
       } else {
-        // Overnight range (night)
+
         if (hour >= start || hour < end) return slot;
       }
     }
-    return 'night'; // fallback
+    return 'night';
+
   }
 
   shouldShowWidget(widgetKey) {
@@ -31,11 +31,12 @@ export class WidgetScheduler {
     if (widgetConfig.timeSlots && widgetConfig.timeSlots.length > 0) {
       return widgetConfig.timeSlots.includes(this.getCurrentTimeSlot());
     }
-    return true; // show always if no time slots specified
+    return true;
+
   }
 
   getActiveWidgets() {
-    return Object.keys(this.config.widgets).filter(key => 
+    return Object.keys(this.config.widgets).filter(key =>
       this.shouldShowWidget(key)
     );
   }

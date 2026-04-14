@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
 import { WIDGET_REGISTRY } from '@/utils/widgetRegistry';
 
@@ -12,10 +12,22 @@ const getCurrentTimeSlot = () => {
   return 'night';
 };
 
+const MAX_SPACE = 8;
+const HERO_SPACE = 4;
+
 const AppTray = () => {
   const [widgets, setWidgets] = useState([]);
   const [config, setConfig] = useState(null);
   const [currentTimeSlot, setCurrentTimeSlot] = useState(getCurrentTimeSlot());
+  const [visible, setVisible] = useState(false);
+
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setVisible(true);
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, []); 
 
   useEffect(() => {
     const loadConfig = async () => {
@@ -26,172 +38,134 @@ const AppTray = () => {
     loadConfig();
   }, []);
 
-
   useEffect(() => {
-    const checkTimeSlot = () => {
-      const newSlot = getCurrentTimeSlot();
-      if (newSlot !== currentTimeSlot) {
-        setCurrentTimeSlot(newSlot);
-      }
-    };
+    const interval = setInterval(() => {
+      setCurrentTimeSlot(getCurrentTimeSlot());
+    }, 60000);
 
-    const interval = setInterval(checkTimeSlot, 60000);
     return () => clearInterval(interval);
-  }, [currentTimeSlot]);
+  }, []);
 
   const isWidgetActive = useCallback((widgetKey) => {
-    if (!config) return false;
+    if (!config?.widgets?.[widgetKey]) return false;
 
     const widgetConfig = config.widgets[widgetKey];
-    if (!widgetConfig?.enabled) {
-      return false;
-    }
+    if (!widgetConfig.enabled) return false;
+    if (!widgetConfig.timeSlots?.length) return true;
 
-    if (!widgetConfig.timeSlots || widgetConfig.timeSlots.length === 0) {
-      return true;
-    }
-
-    const isActive = widgetConfig.timeSlots.includes(currentTimeSlot);
-    return isActive;
+    return widgetConfig.timeSlots.includes(currentTimeSlot);
   }, [config, currentTimeSlot]);
 
-  const handleWidgetUpdate = useCallback((type, subtype, isActive, content, signature = null) => {
-
-    if (isActive && content) {
-      addWidget(type, subtype, content, signature);
-    } else {
-      removeWidgetByType(type, subtype);
-    }
+  const removeWidgetByType = useCallback((type, subtype) => {
+    setWidgets(prev =>
+      prev.filter(w => !(w.type === type && w.subtype === subtype))
+    );
   }, []);
 
   const addWidget = useCallback((type, subtype, content, signature = null) => {
     setWidgets(prev => {
-
-      const filtered = prev.filter(w => !(w.type === type && w.subtype === subtype));
+      let next = prev.filter(w => !(w.type === type && w.subtype === subtype));
 
       const newWidget = {
         id: `${type}-${subtype}-${Date.now()}`,
         type,
         subtype,
-        spaceValue: type === 'hero' ? 4 : 1,
         content,
+        signature,
         timestamp: Date.now(),
-        signature
+        spaceValue: type === 'hero' ? HERO_SPACE : 1
       };
 
       if (type === 'hero') {
-        const regularWidgets = filtered.filter(w => w.type === 'regular');
-        const availableSpace = 4;
-        const sortedRegulars = regularWidgets
+        const regulars = next.filter(w => w.type === 'regular');
+        const newestRegulars = regulars
           .sort((a, b) => b.timestamp - a.timestamp)
-          .slice(0, availableSpace);
-        return [newWidget, ...sortedRegulars];
+          .slice(0, MAX_SPACE - HERO_SPACE);
+        return [newWidget, ...newestRegulars];
       }
 
-      const candidateList = [...filtered, newWidget];
-      const totalSpace = candidateList.reduce((sum, w) => sum + w.spaceValue, 0);
+      next.push(newWidget);
 
-      if (totalSpace <= 8) {
-        return candidateList;
+      const heroes = next.filter(w => w.type === 'hero');
+      let regulars = next
+        .filter(w => w.type === 'regular')
+        .sort((a, b) => a.timestamp - b.timestamp);
+
+      let totalSpace =
+        heroes.reduce((s, w) => s + w.spaceValue, 0) +
+        regulars.reduce((s, w) => s + w.spaceValue, 0);
+
+      while (totalSpace > MAX_SPACE && regulars.length > 0) {
+        regulars.shift();
+        totalSpace =
+          heroes.reduce((s, w) => s + w.spaceValue, 0) +
+          regulars.reduce((s, w) => s + w.spaceValue, 0);
       }
 
-      const regularWidgets = candidateList.filter(w => w.type === 'regular');
-      const heroWidgets = candidateList.filter(w => w.type === 'hero');
-      const sortedRegulars = regularWidgets.sort((a, b) => a.timestamp - b.timestamp);
-
-      while (sortedRegulars.length > 0 &&
-        (sortedRegulars.reduce((sum, w) => sum + w.spaceValue, 0) +
-          heroWidgets.reduce((sum, w) => sum + w.spaceValue, 0)) > 8) {
-        sortedRegulars.shift();
-      }
-
-      return [...heroWidgets, ...sortedRegulars];
+      return [...heroes, ...regulars];
     });
   }, []);
 
-  const removeWidgetByType = useCallback((type, subtype) => {
-    setWidgets(prev => prev.filter(w => !(w.type === type && w.subtype === subtype)));
-  }, []);
+  const handleWidgetUpdate = useCallback(
+    (type, subtype, isActive, content, signature = null) => {
+      if (isActive && content) {
+        addWidget(type, subtype, content, signature);
+      } else {
+        removeWidgetByType(type, subtype);
+      }
+    },
+    [addWidget, removeWidgetByType]
 
-  if (!config) {
-    return;
-  }
+  );
+
+  if (!config) return null;
 
   const heroWidget = widgets.find(w => w.type === 'hero');
-  const regularWidgets = widgets
-    .filter(w => w.type === 'regular')
-    .sort((a, b) => a.timestamp - b.timestamp);
-
-  const totalSpaceUsed = widgets.reduce((sum, w) => sum + w.spaceValue, 0);
-  const activeCount = Object.keys(config.widgets).filter(isWidgetActive).length;
+  const allWidgets = [
+    ...widgets.filter(w => w.type === 'hero'),
+    ...widgets.filter(w => w.type === 'regular').sort((a, b) => a.timestamp - b.timestamp)
+  ];
 
   return (
     <LayoutGroup>
       <div className="z-50 w-full max-w-lg flex flex-col items-center">
-        <div className={heroWidget
-          ? "grid  grid-cols-4 auto-rows-[4rem] gap-2 w-full"
-          : "flex flex-wrap justify-center gap-2 w-full"
-        }>
-          <AnimatePresence mode="popLayout">
-            {heroWidget && (
-              <motion.div
-                key={heroWidget.id}
-                layout
-                initial={{ opacity: 0, scale: 0.8, y: 20 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.8, y: -20 }}
-                transition={{
-                  layout: { duration: 0.3, ease: "easeInOut" },
-                  duration: 0.3
-                }}
-                className="flex w-full font-fit overflow-hidden backdrop-blur-xl   dark:bg-white/20  bg-white/40 text-neutral-800 rounded-[1.25rem] justify-center items-center col-span-2 row-span-2"
-              >
-                {heroWidget.content}
-              </motion.div>
-            )}
-
-            {regularWidgets.map((widget, index) => {
-              const adjustedIndex = heroWidget ? index + 1 : index;
-              return (
-                <motion.div
-                  key={widget.id}
-                  layout
-                  initial={{ opacity: 0, scale: 0.9, y: 10 }}
-                  animate={{
-                    opacity: 1,
-                    scale: 1,
-                    y: 0,
-                    transition: {
-                      delay: adjustedIndex * 0.1,
-                      duration: 0.3,
-                      ease: "easeOut"
-                    }
-                  }}
-                  exit={{ opacity: 0, scale: 0.8, y: -20 }}
-                  transition={{ layout: { duration: 0.3, ease: "easeInOut" } }}
-                  className={heroWidget
-                    ? "flex w-full font-fit overflow-hidden backdrop-blur-xl  dark:bg-white/20  bg-white/40 text-neutral-800 rounded-[1.25rem] justify-center items-center"
-                    : "flex w-[calc(25%-0.375rem)] h-14 font-fit overflow-hidden backdrop-blur-xl  dark:bg-white/20  bg-white/40 text-neutral-800 rounded-[1.25rem] justify-center items-center"
-                  }
-                >
-                  {widget.content}
-                </motion.div>
-              );
-            })}
-          </AnimatePresence>
-        </div>
-
-
-        {Object.entries(config.widgets).map(([widgetKey, widgetConfig]) => {
-
-          if (!widgetConfig.enabled) return null;
-
-          const WidgetComponent = WIDGET_COMPONENTS[widgetKey];
-          if (!WidgetComponent) {
-            console.warn(`Widget "${widgetKey}" enabled in config but not found in WIDGET_COMPONENTS`);
-            return null;
+        <motion.div
+          animate={{ height: heroWidget ? '8.5rem' : '4rem' }}
+          transition={{ duration: 0.4, ease: "easeInOut" }}
+          className={
+            heroWidget
+              ? "grid grid-cols-4 auto-rows-[4rem] gap-2 w-full"
+              : "flex flex-wrap justify-center gap-2 w-full"
           }
-
+        >
+          <AnimatePresence mode="popLayout">
+            {allWidgets.map((widget, index) => (
+              <motion.div
+                key={widget.id}
+                layout
+                initial={{ opacity: 0, scale: 0.9, y: 10 }}
+                animate={visible ? {
+                  opacity: 1, scale: 1, y: 0,
+                  transition: { delay: index * 0.35, duration: 0.35 }
+                } : { opacity: 0, scale: 0.9, y: 10 }}
+                exit={{ opacity: 0, scale: 0.8, y: -20 }}
+                className={
+                  widget.type === 'hero'
+                    ? "flex w-full backdrop-blur-xl overflow-hidden text-black dark:text-white bg-white/40 dark:bg-white/20 rounded-[1.25rem] justify-center items-center col-span-2 row-span-2"
+                    : heroWidget
+                      ? "flex w-full backdrop-blur-xl overflow-hidden text-black dark:text-white bg-white/40 dark:bg-white/20 rounded-[1.25rem] justify-center items-center"
+                      : "flex w-[calc(25%-0.375rem)] overflow-hidden text-black dark:text-white h-14 backdrop-blur-xl bg-white/40 dark:bg-white/20 rounded-[1.25rem] justify-center items-center"
+                }
+              >
+                {widget.content}
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        </motion.div>
+        {Object.entries(config.widgets).map(([widgetKey, widgetConfig]) => {
+          if (!widgetConfig.enabled) return null;
+          const WidgetComponent = WIDGET_COMPONENTS[widgetKey];
+          if (!WidgetComponent) return null;
           return (
             <WidgetComponent
               key={widgetKey}

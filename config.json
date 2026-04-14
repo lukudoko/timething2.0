@@ -19,14 +19,6 @@
         "morning"
       ]
     },
-    "precipitation": {
-      "enabled": true,
-      "timeSlots": [
-        "morning",
-        "afternoon",
-        "evening"
-      ]
-    },
     "date": {
       "enabled": true,
       "timeSlots": []
@@ -38,18 +30,18 @@
     "commuter": {
       "enabled": true,
       "timeSlots": [
-        "morning",
-        "evening"
+        "morning"
       ]
     },
     "year": {
       "enabled": true,
       "timeSlots": [
-        "evening",
-        "night"
+        "night",
+        "evening"
       ]
     },
     "rain": {
+      "enabled": true,
       "timeSlots": [
         "morning",
         "afternoon"

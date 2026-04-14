@@ -3,69 +3,93 @@ import Image from 'next/image';
 
 const WeatherWidget = ({ isActive, onWidgetUpdate, widgetKey }) => {
   const intervalRef = useRef(null);
-  const lastSignatureRef = useRef('');
+  const lastSignatureRef = useRef(null);
+  const activeRef = useRef(isActive);
 
-  const fetchWeather = async () => {
-    try {
-      const response = await fetch('/api/weather');
-      if (!response.ok) {
-        throw new Error(`Weather API error: ${response.status}`);
-      }
-      const data = await response.json();
-      const { current } = data;
-      const temp = Math.round(current.temp);
-      const icon = current.weather.icon;
-      const iconUrl = `https://openweathermap.org/img/wn/${icon}@2x.png`;
-      const dataSignature = `${icon}-${temp}`;
-
-      if (dataSignature !== lastSignatureRef.current) {
-        lastSignatureRef.current = dataSignature;
-        const content = (
-          <div className='flex dark:text-white gap-2 items-center justify-center h-full'>
-            <Image
-              height="56"
-              width="56"
-              src={iconUrl}
-              alt={`Weather: ${current.weather.description}`}
-              className="-mx-2 "
-            />
-            <div className="text-xl font-bold text-center ">{temp}°C</div>
-          </div>
-        );
-
-        if (isActive) {
-          onWidgetUpdate('regular', widgetKey, true, content, dataSignature);
-        }
-      }
-    } catch (err) {
-      console.error('Weather widget error:', err);
-      onWidgetUpdate('regular', widgetKey, false, null);
-    }
-  };
+  useEffect(() => {
+    activeRef.current = isActive;
+  }, [isActive]);
 
   useEffect(() => {
     if (!isActive) {
-
-      onWidgetUpdate('regular', 'weather', false, null);
-      lastSignatureRef.current = '';
+      onWidgetUpdate('regular', widgetKey, false);
+      lastSignatureRef.current = null;
 
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
         intervalRef.current = null;
       }
+
       return;
     }
 
-    const initialTimeout = setTimeout(fetchWeather, 1500);
+    let cancelled = false;
+
+    const fetchWeather = async () => {
+      try {
+        const response = await fetch('/api/weather');
+        if (!response.ok) {
+          throw new Error(`Weather API error: ${response.status}`);
+        }
+
+        const data = await response.json();
+        if (cancelled || !activeRef.current) return;
+
+        const { current } = data;
+        const temp = Math.round(current.temp);
+        const icon = current.weather.icon;
+        const iconUrl = `https://openweathermap.org/img/wn/${icon}@2x.png`;
+
+        const signature = `${icon}-${temp}`;
+
+        if (signature !== lastSignatureRef.current) {
+          lastSignatureRef.current = signature;
+
+          const content = (
+            <div className="flex gap-2 items-center justify-center h-full">
+              <Image
+                height={56}
+                width={56}
+                src={iconUrl}
+                alt={`Weather: ${current.weather.description}`}
+                className="-mx-2"
+              />
+              <div className="text-xl font-bold text-center">
+                {temp}°C
+              </div>
+            </div>
+          );
+
+          onWidgetUpdate(
+            'regular',
+            widgetKey,
+            true,
+            content,
+            signature
+          );
+        }
+      } catch (err) {
+        console.error('Weather widget error:', err);
+
+        if (!cancelled) {
+          onWidgetUpdate('regular', widgetKey, false);
+        }
+      }
+    };
+
+    fetchWeather();
+
     intervalRef.current = setInterval(fetchWeather, 15 * 60 * 1000);
 
     return () => {
-      clearTimeout(initialTimeout);
+      cancelled = true;
+
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
+        intervalRef.current = null;
       }
     };
-  }, [isActive, onWidgetUpdate]);
+  }, [isActive, onWidgetUpdate, widgetKey]);
 
   return null;
 };

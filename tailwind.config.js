@@ -9,7 +9,6 @@ module.exports = {
   theme: {
     extend: {
       fontFamily: {
-        // 👇 Add CSS variables
         sans: ["var(--font-noto-jp)"],
         fit: ["var(--outfit)"],
       },

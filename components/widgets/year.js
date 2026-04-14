@@ -7,6 +7,7 @@ import {
 } from 'date-fns';
 
 const YearProgressWidget = ({ isActive, onWidgetUpdate, widgetKey }) => {
+  const intervalRef = useRef(null);
   const lastRef = useRef(null);
 
   const getProgress = () => {
@@ -19,13 +20,24 @@ const YearProgressWidget = ({ isActive, onWidgetUpdate, widgetKey }) => {
   };
 
   useEffect(() => {
+
     if (!isActive) {
-      onWidgetUpdate('regular', widgetKey, false, null);
+      onWidgetUpdate('regular', widgetKey, false);
+      lastRef.current = null;
+
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+
       return;
     }
 
+    let cancelled = false;
+
     const update = () => {
       const value = getProgress();
+
       if (value === lastRef.current) return;
       lastRef.current = value;
 
@@ -54,11 +66,12 @@ const YearProgressWidget = ({ isActive, onWidgetUpdate, widgetKey }) => {
                 className="stroke-black dark:stroke-white transition-all duration-1000 ease-out"
               />
             </svg>
+
             <div className="absolute inset-0 flex flex-col items-center justify-center leading-none">
-              <span className="text-base font-bold tabular-nums text-black dark:text-white">
+              <span className="text-base font-bold tabular-nums">
                 {value}%
               </span>
-              <span className="text-[0.5rem] font-semibold tracking-widest mt-0.5 text-black/60 dark:text-white/60">
+              <span className="text-[0.5rem] font-semibold tracking-widest mt-0.5 opacity-60">
                 {getYear(new Date())}
               </span>
             </div>
@@ -66,12 +79,30 @@ const YearProgressWidget = ({ isActive, onWidgetUpdate, widgetKey }) => {
         </div>
       );
 
-      onWidgetUpdate('regular', widgetKey, true, content, `year-${value}`);
+      if (!cancelled) {
+        onWidgetUpdate(
+          'regular',
+          widgetKey,
+          true,
+          content,
+          `year-${value}-${getYear(new Date())}`
+
+        );
+      }
     };
 
     update();
-    const interval = setInterval(update, 60 * 60 * 1000);
-    return () => clearInterval(interval);
+
+    intervalRef.current = setInterval(update, 60 * 60 * 1000);
+
+    return () => {
+      cancelled = true;
+
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    };
   }, [isActive, onWidgetUpdate, widgetKey]);
 
   return null;

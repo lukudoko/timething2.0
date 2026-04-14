@@ -1,6 +1,6 @@
 {
   "name": "timething",
-  "version": "2.0",
+  "version": "2.1",
   "private": true,
   "scripts": {
     "generate-widgets": "node scripts/generate-registry.js",

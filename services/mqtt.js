@@ -66,12 +66,13 @@ export const mqttMusicService = {
           break;
 
         case 'shairport/cover': {
-          const base64 = msg;
-          const base6s4 = arrayBufferToBase64(message);
-          state.artwork =
-            base64 === 'LS0='
-              ? null
-              : `data:image/jpeg;base64,${base6s4}`;
+          const base64String = arrayBufferToBase64(message);
+
+          if (base64String === 'LS0=' || !base64String) {
+            state.artwork = "/n.webp";
+          } else {
+            state.artwork = `data:image/jpeg;base64,${base64String}`;
+          }
           break;
         }
       }

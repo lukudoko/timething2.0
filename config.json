@@ -12,6 +12,10 @@
       "enabled": true,
       "timeSlots": []
     },
+    "el": {
+      "enabled": true,
+      "timeSlots": []
+    },
     "uv": {
       "enabled": true,
       "timeSlots": [

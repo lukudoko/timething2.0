@@ -28,7 +28,7 @@ const UVWidget = ({ isActive, onWidgetUpdate, widgetKey }) => {
 
     const checkUvConditions = async () => {
       try {
-        const response = await fetch('/api/weather');
+        const response = await fetch('/api/weather', { cache: 'no-store' });
         if (!response.ok) {
           throw new Error(`Weather API error: ${response.status}`);
         }
@@ -39,9 +39,7 @@ const UVWidget = ({ isActive, onWidgetUpdate, widgetKey }) => {
 
         const uvIndex = data.currentUvIndex;
         const isDay = data.isDay;
-
-        const shouldShow =
-          isDay && uvIndex && uvIndex > 4;
+        const shouldShow = isDay && data.maxUvIndexToday > 4;
 
         if (!shouldShow) {
 

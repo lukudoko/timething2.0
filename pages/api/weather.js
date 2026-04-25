@@ -68,7 +68,7 @@ export default async function handler(req, res) {
         uvIndex: hourlyData.uv_index[index],
         precipitationProbability: hourlyData.precipitation_probability[index],
         weatherCode: hourlyData.weather_code[index],
-        isDay: minsData.is_day[index] === 1,
+        isDay: hourlyData.is_day[index] === 1,  // ← was minsData.is_day
         icon: weatherCodeToIcon(hourlyData.weather_code[index], hourlyData.is_day[index] === 1)
       }));
 
@@ -80,7 +80,7 @@ export default async function handler(req, res) {
 
 
       const maxUvIndex = Math.max(...hourlyData.uv_index);
-      const hasHighRainProbability = hourlyData.precipitation_probability.some(prob => prob > 20);
+      const hasHighRainProbability = hourlyData.precipitation_probability.some(prob => prob > 50);
 
       const combinedData = {
 

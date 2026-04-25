@@ -1,58 +1,45 @@
 import cache from 'memory-cache';
 
 const CACHE_KEY = 'energyPricesSE3';
-const CACHE_EXPIRY = 60 * 60 * 1000; 
-
+const CACHE_EXPIRY = 15 * 60 * 1000;
 const REGION = 'SE3';
 
+const getLevel = (priceSek) => {
+  if (priceSek < 0)    return 'negative';
+  if (priceSek < 0.15) return 'low';
+  if (priceSek > 0.80) return 'high';
+  return 'normal';
+};
+
+const formatDisplay = (priceSek) => {
+  const abs = Math.abs(priceSek).toFixed(2);
+  return (priceSek < 0 && abs !== '0.00') ? `−${abs} kr` : `${abs} kr`;
+};
+
 export default async function handler(req, res) {
-  res.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate');
+  res.setHeader('Cache-Control', 's-maxage=900, stale-while-revalidate=60');
 
   const cached = cache.get(CACHE_KEY);
-  if (cached) {
-    return res.status(200).json(cached);
-  }
+  if (cached) return res.status(200).json(cached);
 
   try {
     const response = await fetch('https://mgrey.se/espot?format=json');
-    if (!response.ok) throw new Error(`API error: ${response.statusText}`);
+    if (!response.ok) throw new Error(`Upstream error: ${response.statusText}`);
 
     const data = await response.json();
-    const regionData = data[REGION];
+    const entry = data[REGION]?.[0];
+    if (!entry) throw new Error(`No data for ${REGION}`);
 
-    if (!regionData?.length) {
-      throw new Error(`No data for ${REGION}`);
-    }
-
-    const currentHour = new Date().getHours();
-    const currentEntry = regionData.find(e => e.hour === currentHour) || regionData[0];
-
-    const priceOre = currentEntry.price_sek;
-    const priceSek = priceOre / 100;
-
-    const isNegative = priceSek < 0;
-
-    let level = 'normal';
-    if (isNegative) level = 'negative';      
-
-    else if (priceSek < 0.15) level = 'low';    
-
-    else if (priceSek > 0.80) level = 'high';   
-
-    const display = isNegative
-      ? `−${Math.abs(priceSek).toFixed(2)} kr`
-      : `${priceSek.toFixed(2)} kr`;
-
+    const priceSek = entry.price_sek/100;
     const result = {
       current: {
-        hour: currentHour,
+        hour: entry.hour,
         priceSek,
-        isNegative,
-        level,
-        display
+        level: getLevel(priceSek),
+        display: formatDisplay(priceSek),
       },
       region: REGION,
-      lastUpdated: new Date().toISOString()
+      lastUpdated: new Date().toISOString(),
     };
 
     cache.put(CACHE_KEY, result, CACHE_EXPIRY);
@@ -60,12 +47,8 @@ export default async function handler(req, res) {
 
   } catch (error) {
     console.error('Energy API error:', error);
-
     const stale = cache.get(CACHE_KEY);
-    if (stale) {
-      return res.status(200).json({ ...stale, isStale: true });
-    }
-
+    if (stale) return res.status(200).json({ ...stale, isStale: true });
     return res.status(500).json({ error: 'Failed to fetch energy prices' });
   }
 }

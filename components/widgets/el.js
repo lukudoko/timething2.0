@@ -26,7 +26,7 @@ const EnergyPriceWidget = ({ isActive, onWidgetUpdate, widgetKey }) => {
 
     const fetchPrices = async () => {
       try {
-        const res = await fetch('/api/el');
+        const res = await fetch('/api/el', { cache: 'no-store' });
         if (!res.ok) throw new Error(`Energy API error: ${res.status}`);
 
         const data = await res.json();
@@ -55,7 +55,7 @@ const EnergyPriceWidget = ({ isActive, onWidgetUpdate, widgetKey }) => {
                 className={colorClass} 
               />
               <span className={colorClass}>
-                {current.display}/<span className='text-[0.6rem]'>KWh</span>
+                {current.display}
               </span>
             </div>
           );

@@ -16,12 +16,21 @@ const DateWidget = ({ isActive, onWidgetUpdate, widgetKey }) => {
     </div>
   );
 
-  useEffect(() => {
+  const emitCurrentDate = () => {
+    const now = new Date();
+    const signature = `${now.getFullYear()}-${now.getMonth()}-${now.getDate()}`;
+    if (signature !== lastSignatureRef.current) {
+      lastSignatureRef.current = signature;
+      onWidgetUpdate('regular', widgetKey, true, buildContent(now), signature);
+    } else {
+      onWidgetUpdate('regular', widgetKey, true, buildContent(now), signature);
+    }
+  };
 
+  useEffect(() => {
     if (!isActive) {
       onWidgetUpdate('regular', widgetKey, false);
       lastSignatureRef.current = null;
-
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
         intervalRef.current = null;
@@ -29,22 +38,9 @@ const DateWidget = ({ isActive, onWidgetUpdate, widgetKey }) => {
       return;
     }
 
-    const update = () => {
-      const now = new Date();
-      const signature = `${now.getFullYear()}-${now.getMonth()}-${now.getDate()}`;
-      if (signature !== lastSignatureRef.current) {
-        lastSignatureRef.current = signature;
-        onWidgetUpdate(
-          'regular',
-          widgetKey,
-          true,
-          buildContent(now),
-          signature
-        );
-      }
-    };
-    update();
-    intervalRef.current = setInterval(update, 60000);
+    emitCurrentDate();
+
+    intervalRef.current = setInterval(emitCurrentDate, 15 * 60 * 1000);
 
     return () => {
       if (intervalRef.current) {

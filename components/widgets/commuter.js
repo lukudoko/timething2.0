@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { format, parseISO, isValid } from 'date-fns';
 
-const CommuterWidget = ({ isActive, onWidgetUpdate, widgetKey }) => {
+const CommuterWidget = ({ isActive, onWidgetUpdate, widgetKey, location }) => {
   const intervalRef = useRef(null);
   const lastSignatureRef = useRef(null);
 
@@ -16,10 +16,8 @@ const CommuterWidget = ({ isActive, onWidgetUpdate, widgetKey }) => {
 
   const getArrivalDisplay = (arrivalTimeStr) => {
     if (!arrivalTimeStr) return "ETA N/A";
-
     const date = parseISO(arrivalTimeStr);
     if (!isValid(date)) return "ETA Error";
-
     return `${format(date, 'h:mm aaa')} @ Brunns`;
   };
 
@@ -37,7 +35,6 @@ const CommuterWidget = ({ isActive, onWidgetUpdate, widgetKey }) => {
         clearInterval(intervalRef.current);
         intervalRef.current = null;
       }
-
       return;
     }
 
@@ -129,23 +126,20 @@ const CommuterWidget = ({ isActive, onWidgetUpdate, widgetKey }) => {
 
       } catch (err) {
         console.error('Commuter fetch error:', err);
-        onWidgetUpdate('hero', widgetKey, false);
       }
     };
 
     fetchDepartures();
-
-    intervalRef.current = setInterval(fetchDepartures, 30000);
+    intervalRef.current = setInterval(fetchDepartures, 60000);
 
     return () => {
       cancelled = true;
-
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
         intervalRef.current = null;
       }
     };
-  }, [isActive, onWidgetUpdate, widgetKey]);
+  }, [isActive, onWidgetUpdate, widgetKey, location]);
 
   return null;
 };

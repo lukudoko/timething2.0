@@ -39,7 +39,7 @@ export const mqttMusicService = {
 
     const mqtt = await import('mqtt');
 
-    client = mqtt.default.connect('ws://192.168.3.99:9001');
+    client = mqtt.default.connect('wss://time.hlaben.duckdns.org/mqtt');
 
     client.on('connect', () => {
       client.subscribe('shairport/#');

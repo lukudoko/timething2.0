@@ -35,7 +35,7 @@ export default function Settings() {
         console.error('Failed to load config:', e);
       }
     };
-    
+
     loadConfig();
   }, [refreshTrigger]);
 
@@ -85,13 +85,13 @@ export default function Settings() {
   const handleTimeSlotChange = (widgetId, timeSlot, isChecked) => {
     const currentSlots = config.widgets[widgetId]?.timeSlots || [];
     let newSlots;
-    
+
     if (isChecked) {
       newSlots = [...new Set([...currentSlots, timeSlot])]; // Add and deduplicate
     } else {
       newSlots = currentSlots.filter(slot => slot !== timeSlot);
     }
-    
+
     updateWidgetTimeSlots(widgetId, newSlots);
   };
 
@@ -105,12 +105,18 @@ export default function Settings() {
     setError('');
 
     try {
-      // Save to your JSON file via API
       const response = await fetch('/api/config', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(config)
       });
+
+      if (response.ok) {
+        setIsSaved(true);
+        setTimeout(() => setIsSaved(false), 2000);
+        console.log("yep");
+        window.dispatchEvent(new Event('refresh-tray-config'));
+      }
 
       if (!response.ok) {
         throw new Error('Failed to save configuration');
@@ -128,7 +134,7 @@ export default function Settings() {
     try {
       // Reset to defaults via API
       const response = await fetch('/api/config/reset', { method: 'POST' });
-      
+
       if (response.ok) {
         setConfig({
           location: { latitude: '', longitude: '' },
@@ -195,7 +201,6 @@ export default function Settings() {
               </div>
             </div>
 
-            {/* Widget Management */}
             <div>
               <h2 className="text-lg font-semibold mb-3">Widgets</h2>
               <div className="space-y-4">
@@ -203,7 +208,7 @@ export default function Settings() {
                   const widgetConfig = config.widgets[widget.id] || {};
                   const selectedTimeSlots = widgetConfig.timeSlots || [];
                   const isAllSelected = selectedTimeSlots.length === timeSlots.length;
-                  
+
                   return (
                     <div key={widget.id} className="border border-gray-200 rounded-xl p-4">
                       <div className="flex items-center justify-between mb-3">

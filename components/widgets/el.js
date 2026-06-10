@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { FaBolt } from 'react-icons/fa'; 
+import { FaBolt } from 'react-icons/fa';
 
 const EnergyPriceWidget = ({ isActive, onWidgetUpdate, widgetKey }) => {
   const intervalRef = useRef(null);
@@ -33,7 +33,6 @@ const EnergyPriceWidget = ({ isActive, onWidgetUpdate, widgetKey }) => {
         if (cancelled || !activeRef.current) return;
 
         const { current } = data;
-
         const signature = `energy-${current.priceSek}-${current.level}`;
 
         if (signature !== lastSignatureRef.current) {
@@ -42,38 +41,23 @@ const EnergyPriceWidget = ({ isActive, onWidgetUpdate, widgetKey }) => {
           const levelColors = {
             negative: 'text-green-500 animate-pulse',
             low: 'text-green-700',
-            normal: '', 
-            high: 'text-rose-500 '
+            normal: '',
+            high: 'text-rose-500',
           };
 
-          const colorClass = levelColors[current.level];
+          const colorClass = levelColors[current.level] || '';
 
           const content = (
             <div className="flex gap-2 items-center text-sm font-bold text-center justify-center h-full">
-              <FaBolt 
-                size={20} 
-                className={colorClass} 
-              />
-              <span className={colorClass}>
-                {current.display}
-              </span>
+              <FaBolt size={20} className={colorClass} />
+              <span className={colorClass}>{current.display}</span>
             </div>
           );
 
-          onWidgetUpdate(
-            'regular',
-            widgetKey,
-            true,
-            content,
-            signature
-          );
+          onWidgetUpdate('regular', widgetKey, true, content, signature);
         }
       } catch (err) {
         console.error('Energy widget error:', err);
-
-        if (!cancelled) {
-          onWidgetUpdate('regular', widgetKey, false, null);
-        }
       }
     };
 

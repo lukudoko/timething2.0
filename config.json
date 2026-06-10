@@ -1,7 +1,7 @@
 {
   "location": {
-    "latitude": "",
-    "longitude": ""
+    "latitude": 57.65,
+    "longitude": "11.95"
   },
   "widgets": {
     "music": {
@@ -19,29 +19,26 @@
     "uv": {
       "enabled": true,
       "timeSlots": [
-        "afternoon",
-        "morning"
+        "morning",
+        "afternoon"
       ]
     },
     "date": {
       "enabled": true,
       "timeSlots": []
     },
-    "yearProgress": {
+    "year": {
       "enabled": true,
-      "timeSlots": []
+      "timeSlots": [
+        "evening",
+        "night"
+      ]
     },
     "commuter": {
       "enabled": true,
       "timeSlots": [
-        "morning"
-      ]
-    },
-    "year": {
-      "enabled": true,
-      "timeSlots": [
-        "night",
-        "evening"
+        "morning",
+        "afternoon"
       ]
     },
     "rain": {

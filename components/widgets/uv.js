@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
-import { TbSunglassesFilled } from "react-icons/tb";
+import { TbSunglassesFilled } from 'react-icons/tb';
 
-const UVWidget = ({ isActive, onWidgetUpdate, widgetKey }) => {
+const UVWidget = ({ isActive, onWidgetUpdate, widgetKey, location }) => {
   const intervalRef = useRef(null);
   const lastSignatureRef = useRef(null);
   const activeRef = useRef(isActive);
@@ -11,16 +11,13 @@ const UVWidget = ({ isActive, onWidgetUpdate, widgetKey }) => {
   }, [isActive]);
 
   useEffect(() => {
-
     if (!isActive) {
       onWidgetUpdate('regular', widgetKey, false);
       lastSignatureRef.current = null;
-
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
         intervalRef.current = null;
       }
-
       return;
     }
 
@@ -28,21 +25,22 @@ const UVWidget = ({ isActive, onWidgetUpdate, widgetKey }) => {
 
     const checkUvConditions = async () => {
       try {
-        const response = await fetch('/api/weather', { cache: 'no-store' });
-        if (!response.ok) {
-          throw new Error(`Weather API error: ${response.status}`);
-        }
+        const hour = new Date().getHours();
+        const lat = location?.lat || 57.65;
+        const lon = location?.lon || 11.916;
+        const res = await fetch(
+          `/api/weather?lat=${lat}&lon=${lon}&hour=${hour}`,
+          { cache: 'no-store' }
+        );
+        if (!res.ok) throw new Error(`Weather API error: ${res.status}`);
 
-        const data = await response.json();
-
+        const data = await res.json();
         if (cancelled || !activeRef.current) return;
 
-        const uvIndex = data.currentUvIndex;
-        const isDay = data.isDay;
-        const shouldShow = isDay && data.maxUvIndexToday > 4;
+        const maxUv = data.maxUvIndex6h; 
+        const shouldShow = maxUv >= 4;
 
         if (!shouldShow) {
-
           if (lastSignatureRef.current !== null) {
             lastSignatureRef.current = null;
             onWidgetUpdate('regular', widgetKey, false);
@@ -50,52 +48,38 @@ const UVWidget = ({ isActive, onWidgetUpdate, widgetKey }) => {
           return;
         }
 
-        const roundedUv = Math.round(uvIndex);
-        const signature = `uv-${roundedUv}-${isDay}`;
+        const roundedMax = Math.round(maxUv);
+        const signature = `uv-max-${roundedMax}`;
 
         if (signature === lastSignatureRef.current) return;
-
         lastSignatureRef.current = signature;
 
         const content = (
           <div className="flex flex-col items-center justify-center h-full">
             <TbSunglassesFilled size={30} />
             <div className="text-base font-extrabold text-center">
-              UV {roundedUv}
+              Max UVI {roundedMax}
             </div>
           </div>
         );
 
-        onWidgetUpdate(
-          'regular',
-          widgetKey,
-          true,
-          content,
-          signature
-        );
-
+        onWidgetUpdate('regular', widgetKey, true, content, signature);
       } catch (err) {
         console.error('UV widget error:', err);
-
-        if (!cancelled) {
-          onWidgetUpdate('regular', widgetKey, false);
-        }
       }
     };
 
     checkUvConditions();
-
     intervalRef.current = setInterval(checkUvConditions, 15 * 60 * 1000);
 
     return () => {
       cancelled = true;
-
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
         intervalRef.current = null;
       }
     };
-  }, [isActive, onWidgetUpdate, widgetKey]);
+  }, [isActive, onWidgetUpdate, widgetKey, location]);
 
   return null;
 };

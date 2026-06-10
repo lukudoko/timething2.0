@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
 import { WIDGET_REGISTRY } from '@/utils/widgetRegistry';
 
@@ -18,43 +18,54 @@ const HERO_SPACE = 4;
 const AppTray = () => {
   const [widgets, setWidgets] = useState([]);
   const [config, setConfig] = useState(null);
-  const [currentTimeSlot, setCurrentTimeSlot] = useState(getCurrentTimeSlot());
   const [visible, setVisible] = useState(false);
+  const [tick, setTick] = useState(0);
 
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setVisible(true);
-    }, 1500);
-    return () => clearTimeout(timer);
-  }, []); 
-
-  useEffect(() => {
-    const loadConfig = async () => {
+  const loadConfig = useCallback(async () => {
+    try {
       const res = await fetch('/api/config');
       const data = await res.json();
       setConfig(data);
-    };
-    loadConfig();
+    } catch (err) {
+      console.error('Config fetch failed:', err);
+    }
   }, []);
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentTimeSlot(getCurrentTimeSlot());
-    }, 60000);
+    loadConfig();
+    const interval = setInterval(loadConfig, 30_000);
+    const handler = () => loadConfig();
+    window.addEventListener('refresh-tray-config', handler);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('refresh-tray-config', handler);
+    };
+  }, [loadConfig]);
 
-    return () => clearInterval(interval);
+  useEffect(() => {
+    const id = setInterval(() => setTick(t => t + 1), 30_000);
+    return () => clearInterval(id);
+  }, []);
+
+  const currentTimeSlot = getCurrentTimeSlot();
+
+  useEffect(() => {
+    const timer = setTimeout(() => setVisible(true), 1500);
+    return () => clearTimeout(timer);
   }, []);
 
   const isWidgetActive = useCallback((widgetKey) => {
     if (!config?.widgets?.[widgetKey]) return false;
-
     const widgetConfig = config.widgets[widgetKey];
     if (!widgetConfig.enabled) return false;
     if (!widgetConfig.timeSlots?.length) return true;
-
     return widgetConfig.timeSlots.includes(currentTimeSlot);
   }, [config, currentTimeSlot]);
+
+  useEffect(() => {
+    if (!config) return;
+    setWidgets(prev => prev.filter(w => isWidgetActive(w.subtype)));
+  }, [config, currentTimeSlot, isWidgetActive]);
 
   const removeWidgetByType = useCallback((type, subtype) => {
     setWidgets(prev =>
@@ -64,6 +75,11 @@ const AppTray = () => {
 
   const addWidget = useCallback((type, subtype, content, signature = null) => {
     setWidgets(prev => {
+      const existing = prev.find(w => w.type === type && w.subtype === subtype);
+      if (existing && signature !== null && existing.signature === signature) {
+        return prev;
+      }
+
       let next = prev.filter(w => !(w.type === type && w.subtype === subtype));
 
       const newWidget = {
@@ -73,7 +89,7 @@ const AppTray = () => {
         content,
         signature,
         timestamp: Date.now(),
-        spaceValue: type === 'hero' ? HERO_SPACE : 1
+        spaceValue: type === 'hero' ? HERO_SPACE : 1,
       };
 
       if (type === 'hero') {
@@ -115,8 +131,12 @@ const AppTray = () => {
       }
     },
     [addWidget, removeWidgetByType]
-
   );
+
+  const stableLocation = useMemo(() => config?.location ?? {}, [
+    config?.location?.latitude,
+    config?.location?.longitude,
+  ]);
 
   if (!config) return null;
 
@@ -172,7 +192,7 @@ const AppTray = () => {
               widgetKey={widgetKey}
               isActive={isWidgetActive(widgetKey)}
               onWidgetUpdate={handleWidgetUpdate}
-              location={config.location}
+              location={stableLocation}
             />
           );
         })}

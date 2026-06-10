@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
-import { FaUmbrella } from "react-icons/fa";
+import { FaUmbrella } from 'react-icons/fa';
 
-const PrecipitationWidget = ({ isActive, onWidgetUpdate, widgetKey }) => {
+const PrecipitationWidget = ({ isActive, onWidgetUpdate, widgetKey, location }) => {
   const intervalRef = useRef(null);
   const lastSignatureRef = useRef(null);
   const activeRef = useRef(isActive);
@@ -11,7 +11,6 @@ const PrecipitationWidget = ({ isActive, onWidgetUpdate, widgetKey }) => {
   }, [isActive]);
 
   useEffect(() => {
-
     if (!isActive) {
       onWidgetUpdate('regular', widgetKey, false);
       lastSignatureRef.current = null;
@@ -20,7 +19,6 @@ const PrecipitationWidget = ({ isActive, onWidgetUpdate, widgetKey }) => {
         clearInterval(intervalRef.current);
         intervalRef.current = null;
       }
-
       return;
     }
 
@@ -28,13 +26,20 @@ const PrecipitationWidget = ({ isActive, onWidgetUpdate, widgetKey }) => {
 
     const checkPrecipitationConditions = async () => {
       try {
-        const response = await fetch('/api/weather', { cache: 'no-store' });
+        const hour = new Date().getHours();
+        const lat = location?.latitude || 57.65;
+        const lon = location?.longitude || 11.916;
+
+        const response = await fetch(
+          `/api/weather?lat=${lat}&lon=${lon}&hour=${hour}`,
+          { cache: 'no-store' }
+        );
+
         if (!response.ok) {
           throw new Error(`Weather API error: ${response.status}`);
         }
 
         const data = await response.json();
-
         if (cancelled || !activeRef.current) return;
 
         const hasRainAlert = data.hasRainAlert;
@@ -61,39 +66,23 @@ const PrecipitationWidget = ({ isActive, onWidgetUpdate, widgetKey }) => {
           </div>
         );
 
-        onWidgetUpdate(
-          'regular',
-          widgetKey,
-          true,
-          content,
-          signature
-        );
-
+        onWidgetUpdate('regular', widgetKey, true, content, signature);
       } catch (err) {
         console.error('Precipitation widget error:', err);
-
-        if (!cancelled) {
-          onWidgetUpdate('regular', widgetKey, false);
-        }
       }
     };
 
     checkPrecipitationConditions();
-
-    intervalRef.current = setInterval(
-      checkPrecipitationConditions,
-      15 * 60 * 1000
-    );
+    intervalRef.current = setInterval(checkPrecipitationConditions, 15 * 60 * 1000);
 
     return () => {
       cancelled = true;
-
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
         intervalRef.current = null;
       }
     };
-  }, [isActive, onWidgetUpdate, widgetKey]);
+  }, [isActive, onWidgetUpdate, widgetKey, location]);
 
   return null;
 };

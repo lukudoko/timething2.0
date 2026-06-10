@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import Image from 'next/image';
 
-const WeatherWidget = ({ isActive, onWidgetUpdate, widgetKey }) => {
+const WeatherWidget = ({ isActive, onWidgetUpdate, widgetKey, location }) => {
   const intervalRef = useRef(null);
   const lastSignatureRef = useRef(null);
   const activeRef = useRef(isActive);
@@ -19,7 +19,6 @@ const WeatherWidget = ({ isActive, onWidgetUpdate, widgetKey }) => {
         clearInterval(intervalRef.current);
         intervalRef.current = null;
       }
-
       return;
     }
 
@@ -27,7 +26,15 @@ const WeatherWidget = ({ isActive, onWidgetUpdate, widgetKey }) => {
 
     const fetchWeather = async () => {
       try {
-        const response = await fetch('/api/weather', { cache: 'no-store' });
+        const hour = new Date().getHours();                 
+        const lat = location?.latitude || 57.65;
+        const lon = location?.longitude || 11.916;
+
+        const response = await fetch(
+          `/api/weather?lat=${lat}&lon=${lon}&hour=${hour}`,
+          { cache: 'no-store' }
+        );
+
         if (!response.ok) {
           throw new Error(`Weather API error: ${response.status}`);
         }
@@ -60,36 +67,24 @@ const WeatherWidget = ({ isActive, onWidgetUpdate, widgetKey }) => {
             </div>
           );
 
-          onWidgetUpdate(
-            'regular',
-            widgetKey,
-            true,
-            content,
-            signature
-          );
+          onWidgetUpdate('regular', widgetKey, true, content, signature);
         }
       } catch (err) {
         console.error('Weather widget error:', err);
-
-        if (!cancelled) {
-          onWidgetUpdate('regular', widgetKey, false);
-        }
       }
     };
 
     fetchWeather();
-
     intervalRef.current = setInterval(fetchWeather, 15 * 60 * 1000);
 
     return () => {
       cancelled = true;
-
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
         intervalRef.current = null;
       }
     };
-  }, [isActive, onWidgetUpdate, widgetKey]);
+  }, [isActive, onWidgetUpdate, widgetKey, location]);
 
   return null;
 };

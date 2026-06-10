@@ -1,4 +1,4 @@
-const API_KEY = '9ff31d3e-7720-4742-88f8-064bbc7f204a';
+const API_KEY = 'fe53cf5a-20ff-4715-bcb7-c74d95da3225';
 const STOP_ID = '740025668'; 
 
 const TARGET_STOP_NAME = "Göteborg Brunnsparken"; 
